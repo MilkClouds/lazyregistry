@@ -13,10 +13,12 @@ References:
 """
 
 from collections import UserDict
-from typing import Generic, TypeVar, overload
+from typing import Generic, TypeVar, Union, overload
 
 from pydantic import ImportString as ImportStringType
 from pydantic import TypeAdapter
+
+__all__ = ["LazyImportDict", "Registry", "Namespace", "NAMESPACE"]
 
 adapter = TypeAdapter(ImportStringType)
 
@@ -37,7 +39,7 @@ class LazyImportDict(UserDict[K, V], Generic[K, V]):
     @overload
     def register(self, key: K, value: str, *, is_instance: bool = False, eager_load: bool = False) -> None: ...
 
-    def register(self, key: K, value: V | str, *, is_instance: bool = False, eager_load: bool = False) -> None:
+    def register(self, key: K, value: Union[V, str], *, is_instance: bool = False, eager_load: bool = False) -> None:
         """Register a value in the dictionary.
 
         Args:
@@ -94,4 +96,3 @@ class Namespace(UserDict[str, Registry]):
 
 # Global namespace instance
 NAMESPACE = Namespace()
-

@@ -22,10 +22,10 @@ class TestLazyImportDict:
         """Test registering an import string."""
         registry = LazyImportDict()
         registry.register("json", "json:dumps")
-        
+
         # Should be ImportString before access
         assert isinstance(registry.data["json"], ImportString)
-        
+
         # Should be loaded after access
         func = registry["json"]
         assert callable(func)
@@ -35,8 +35,9 @@ class TestLazyImportDict:
         """Test registering an instance directly."""
         registry = LazyImportDict()
         import json
+
         registry.register("json", json.dumps, is_instance=True)
-        
+
         # Should be the actual object
         assert registry.data["json"] is json.dumps
         assert registry["json"] is json.dumps
@@ -45,7 +46,7 @@ class TestLazyImportDict:
         """Test eager loading."""
         registry = LazyImportDict()
         registry.register("json", "json:dumps", eager_load=True)
-        
+
         # Should be loaded immediately
         assert not isinstance(registry.data["json"], ImportString)
         assert callable(registry.data["json"])
@@ -69,7 +70,7 @@ class TestRegistry:
         """Test basic registry usage."""
         registry = Registry(name="serializers")
         registry.register("json", "json:dumps")
-        
+
         func = registry["json"]
         assert callable(func)
         result = func({"key": "value"})
@@ -83,7 +84,7 @@ class TestNamespace:
         """Namespace should auto-create registries."""
         ns = Namespace()
         assert "models" not in ns.data
-        
+
         # Access should create registry
         registry = ns["models"]
         assert isinstance(registry, Registry)
@@ -95,7 +96,7 @@ class TestNamespace:
         ns = Namespace()
         ns["models"].register("bert", "json:dumps")
         ns["tokenizers"].register("bert", "json:loads")
-        
+
         # Different registries should have different values
         model_func = ns["models"]["bert"]
         tokenizer_func = ns["tokenizers"]["bert"]
@@ -122,14 +123,15 @@ class TestIntegration:
     def test_mixed_registration(self):
         """Test mixing import strings and instances."""
         registry = Registry(name="mixed")
-        
+
         # Register import string
         registry.register("lazy", "json:dumps")
-        
+
         # Register instance
         import json
+
         registry.register("eager", json.loads, is_instance=True)
-        
+
         # Both should work
         assert callable(registry["lazy"])
         assert callable(registry["eager"])
@@ -140,7 +142,7 @@ class TestIntegration:
         registry = Registry(name="test")
         registry.register("key", "json:dumps")
         registry.register("key", "json:loads")
-        
+
         # Should have the new value
         func = registry["key"]
         assert func.__name__ == "loads"
@@ -150,14 +152,13 @@ class TestIntegration:
         registry = Registry(name="test")
         registry.register("a", "json:dumps")
         registry.register("b", "json:loads")
-        
+
         # Test keys()
         assert set(registry.keys()) == {"a", "b"}
-        
+
         # Test len()
         assert len(registry) == 2
-        
+
         # Test in
         assert "a" in registry
         assert "c" not in registry
-

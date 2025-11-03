@@ -15,15 +15,18 @@ PLUGINS: Registry[str, type] = Registry(name="plugins")
 
 def plugin(name: str):
     """Decorator to register a plugin by name."""
+
     def decorator(cls: type) -> type:
         PLUGINS.register(name, cls, is_instance=True)
         return cls
+
     return decorator
 
 
 # ============================================================================
 # Built-in plugins
 # ============================================================================
+
 
 @plugin("uppercase")
 class UppercasePlugin:
@@ -60,6 +63,7 @@ class TitleCasePlugin:
 # ============================================================================
 # Plugin manager
 # ============================================================================
+
 
 class PluginManager:
     """Centralized plugin management."""
@@ -102,4 +106,3 @@ if __name__ == "__main__":
     # Pipeline
     result = PluginManager.pipeline(text, "uppercase", "reverse")
     print(f"\nPipeline (uppercase → reverse): '{result}'")
-

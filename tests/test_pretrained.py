@@ -13,12 +13,14 @@ from lazyregistry.pretrained import AutoRegistry, PretrainedMixin
 
 class SimpleConfig(BaseModel):
     """Simple configuration for testing."""
+
     model_type: str
     value: int = 42
 
 
 class SimpleModel(PretrainedMixin[SimpleConfig]):
     """Simple model for pretrained functionality testing."""
+
     config_class = SimpleConfig
 
 
@@ -75,41 +77,43 @@ class TestPretrainedMixin:
 
 class CustomConfig(BaseModel):
     """Config with custom state."""
+
     model_type: str
     vocab_size: int = 100
 
 
 class CustomModel(PretrainedMixin[CustomConfig]):
     """Model with custom state beyond config."""
+
     config_class = CustomConfig
-    
+
     def __init__(self, config: CustomConfig, vocab: dict[str, int] | None = None):
         super().__init__(config)
         self.vocab = vocab or {}
-    
+
     def save_pretrained(self, save_directory: str | Path) -> None:
         """Save config and vocabulary."""
         super().save_pretrained(save_directory)
-        
+
         # Save vocabulary
         save_path = Path(save_directory)
         vocab_file = save_path / "vocab.txt"
         sorted_vocab = sorted(self.vocab.items(), key=lambda x: x[1])
         vocab_file.write_text("\n".join(word for word, _ in sorted_vocab))
-    
+
     @classmethod
     def from_pretrained(cls, pretrained_path: str | Path, **kwargs: Any) -> "CustomModel":
         """Load config and vocabulary."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())
-        
+
         # Load vocabulary
         vocab_file = Path(pretrained_path) / "vocab.txt"
         vocab = {}
         if vocab_file.exists():
             words = vocab_file.read_text().strip().split("\n")
             vocab = {word: idx for idx, word in enumerate(words)}
-        
+
         return cls(config, vocab=vocab, **kwargs)
 
 
@@ -121,14 +125,14 @@ class TestCustomPretrained:
         config = CustomConfig(model_type="custom", vocab_size=5)
         vocab = {"<unk>": 0, "hello": 1, "world": 2}
         model = CustomModel(config, vocab=vocab)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
-            
+
             # Check vocab file exists
             vocab_file = Path(tmpdir) / "vocab.txt"
             assert vocab_file.exists()
-            
+
             # Check vocab content
             words = vocab_file.read_text().strip().split("\n")
             assert words == ["<unk>", "hello", "world"]
@@ -138,16 +142,17 @@ class TestCustomPretrained:
         config = CustomConfig(model_type="custom", vocab_size=5)
         vocab = {"<unk>": 0, "hello": 1, "world": 2}
         model = CustomModel(config, vocab=vocab)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
             loaded = CustomModel.from_pretrained(tmpdir)
-            
+
             assert loaded.vocab == vocab
 
 
 class AutoTestModel(AutoRegistry):
     """Auto-loader for test models."""
+
     registry = NAMESPACE["test_models"]
     config_class = SimpleConfig
     type_key = "model_type"
@@ -156,12 +161,14 @@ class AutoTestModel(AutoRegistry):
 @AutoTestModel.register("bert")
 class BertTestModel(PretrainedMixin[SimpleConfig]):
     """BERT test model."""
+
     config_class = SimpleConfig
 
 
 @AutoTestModel.register("gpt")
 class GPTTestModel(PretrainedMixin[SimpleConfig]):
     """GPT test model."""
+
     config_class = SimpleConfig
 
 
@@ -228,4 +235,3 @@ class TestAutoRegistry:
         """Test that AutoRegistry cannot be instantiated."""
         with pytest.raises(TypeError, match="should not be instantiated"):
             AutoTestModel()
-
