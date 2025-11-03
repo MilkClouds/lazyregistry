@@ -1,0 +1,16 @@
+[project]
+name = "lazyregistry"
+version = "0.1.0"
+description = "A lightweight Python library for lazy-loading registries with namespace support and type safety."
+readme = "README.md"
+authors = [
+    { name = "Suhwan Choi", email = "milkclouds00@gmail.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"
