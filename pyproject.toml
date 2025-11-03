@@ -11,6 +11,23 @@ dependencies = [
     "pydantic>=2.0",
 ]
 
+[dependency-groups]
+dev = [
+    "ipython",
+    "pytest",
+    "pytest-cov",
+    "ruff>=0.3.0",
+]
+
+[tool.ruff]
+line-length = 119
+
 [build-system]
-requires = ["uv_build>=0.9.7,<0.10.0"]
-build-backend = "uv_build"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/lazyregistry/_version.py"
