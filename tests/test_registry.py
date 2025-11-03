@@ -1,6 +1,7 @@
 """Tests for core registry functionality."""
 
 import pytest
+
 from lazyregistry import NAMESPACE
 from lazyregistry.registry import ImportString, LazyImportDict, Namespace, Registry
 
@@ -13,6 +14,43 @@ class TestImportString:
         s = ImportString("json:dumps")
         assert isinstance(s, str)
         assert s == "json:dumps"
+
+    def test_load_method(self):
+        """Test load() method imports the object."""
+        import_str = ImportString("json:dumps")
+        func = import_str.load()
+
+        # Should return the actual function
+        assert callable(func)
+        import json
+
+        assert func is json.dumps
+
+    def test_load_method_with_module(self):
+        """Test load() method with module import."""
+        import_str = ImportString("json")
+        module = import_str.load()
+
+        # Should return the module
+        import json
+
+        assert module is json
+
+    def test_load_method_invalid_import(self):
+        """Test load() method with invalid import string."""
+        import_str = ImportString("nonexistent_module:function")
+
+        with pytest.raises(Exception):  # Pydantic will raise an error
+            import_str.load()
+
+    def test_load_method_multiple_calls(self):
+        """Test that load() can be called multiple times."""
+        import_str = ImportString("json:loads")
+        func1 = import_str.load()
+        func2 = import_str.load()
+
+        # Should return the same object
+        assert func1 is func2
 
 
 class TestLazyImportDict:
