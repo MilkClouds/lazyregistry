@@ -1,99 +1,103 @@
 """
-Template for pretrained model pattern with registry support.
+HuggingFace-style pretrained model pattern using lazyregistry.
 
-This is a TEMPLATE module. Replace "Something" with your actual class name:
-- SomethingConfig -> YourConfig
-- SomethingMixin -> YourMixin
-- AutoSomething -> AutoYour
-- SOMETHING_REGISTRY -> YOUR_REGISTRY
-- something_config.json -> your_config.json
+This example shows how to build an auto-loader system similar to
+transformers.AutoModel with save_pretrained/from_pretrained support.
 """
 
-import os
 from pathlib import Path
-from typing import ClassVar, Type, Union
-
+from typing import ClassVar, Type
 from pydantic import BaseModel
+from lazyregistry import NAMESPACE, Registry
 
-from sthrgs.registry import Namespace, Registry
-
-PathLike = Union[str, os.PathLike]
-
-# TODO: Rename "something" to your actual registry name
-SOMETHING_REGISTRY: Registry[str, Type["SomethingMixin"]] = Namespace()["something"]
-CONFIG_FILE = "something_config.json"
+# Create a registry for models
+MODEL_REGISTRY: Registry[str, Type["ModelBase"]] = NAMESPACE["models"]
 
 
-class SomethingConfig(BaseModel):
-    """Configuration for Something implementations.
-
-    Example:
-        config = SomethingConfig(name="my_something")
-    """
-
-    name: str
+class ModelConfig(BaseModel):
+    """Model configuration."""
+    model_type: str
+    hidden_size: int = 768
+    num_layers: int = 12
 
 
-class SomethingMixin:
-    """Base class for Something implementations with save/load functionality.
+class ModelBase:
+    """Base class with save/load functionality."""
 
-    Example:
-        class MyThing(SomethingMixin):
-            config_cls = SomethingConfig
+    config_class: ClassVar[Type[ModelConfig]] = ModelConfig
 
-        config = SomethingConfig(name="my_thing")
-        obj = MyThing(config)
-        obj.save_pretrained("./path")
-        loaded = MyThing.from_pretrained("./path")
-    """
-
-    config_cls: ClassVar[Type[SomethingConfig]]
-
-    def __init__(self, config: SomethingConfig):
+    def __init__(self, config: ModelConfig):
         self.config = config
 
-    def save_pretrained(self, save_directory: PathLike) -> None:
-        """Save the configuration to a directory."""
-        save_path = Path(save_directory)
+    def save_pretrained(self, path: str) -> None:
+        """Save model configuration."""
+        save_path = Path(path)
         save_path.mkdir(parents=True, exist_ok=True)
-        (save_path / CONFIG_FILE).write_text(self.config.model_dump_json())
+        (save_path / "config.json").write_text(
+            self.config.model_dump_json(indent=2)
+        )
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path: PathLike, **kwargs):
-        """Load a pretrained model from a directory."""
-        config_file = Path(pretrained_model_name_or_path) / CONFIG_FILE
-        config = cls.config_cls.model_validate_json(config_file.read_text())
-        return cls(config, **kwargs)
+    def from_pretrained(cls, path: str) -> "ModelBase":
+        """Load model from saved configuration."""
+        config_file = Path(path) / "config.json"
+        config = cls.config_class.model_validate_json(config_file.read_text())
+        return cls(config)
 
 
-class AutoSomething:
-    """Auto-loader for registered Something implementations
-
-    Example:
-        @AutoSomething.register("my_thing")
-        class MyThing(SomethingMixin):
-            config_cls = SomethingConfig
-
-        obj = AutoSomething.from_pretrained("./path")
-    """
-
-    def __init__(self) -> None:
-        raise NotImplementedError("AutoSomething is a static class and should not be instantiated")
+class AutoModel:
+    """Auto-loader for registered models."""
 
     @classmethod
-    def register(cls, name: str):
-        """Register a class as a Something implementation."""
-
-        def decorator(something_cls: Type[SomethingMixin]) -> Type[SomethingMixin]:
-            SOMETHING_REGISTRY[name] = something_cls
-            return something_cls
-
+    def register(cls, model_type: str):
+        """Decorator to register a model class."""
+        def decorator(model_class: Type[ModelBase]) -> Type[ModelBase]:
+            MODEL_REGISTRY.register(model_type, model_class, is_instance=True)
+            return model_class
         return decorator
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path: PathLike, **kwargs):
-        """Load a Something implementation from pretrained."""
-        config_file = Path(pretrained_model_name_or_path) / CONFIG_FILE
-        config = SomethingConfig.model_validate_json(config_file.read_text())
-        subclass = SOMETHING_REGISTRY[config.name]
-        return subclass.from_pretrained(pretrained_model_name_or_path, **kwargs)
+    def from_pretrained(cls, path: str) -> ModelBase:
+        """Load any registered model from path."""
+        config_file = Path(path) / "config.json"
+        config = ModelConfig.model_validate_json(config_file.read_text())
+        model_class = MODEL_REGISTRY[config.model_type]
+        return model_class.from_pretrained(path)
+
+
+# Register model implementations
+@AutoModel.register("bert")
+class BertModel(ModelBase):
+    """BERT model implementation."""
+    pass
+
+
+@AutoModel.register("gpt2")
+class GPT2Model(ModelBase):
+    """GPT-2 model implementation."""
+    pass
+
+
+@AutoModel.register("t5")
+class T5Model(ModelBase):
+    """T5 model implementation."""
+    pass
+
+
+# Example usage
+if __name__ == "__main__":
+    import tempfile
+
+    # Create and save a model
+    config = ModelConfig(model_type="bert", hidden_size=768)
+    model = BertModel(config)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Save
+        model.save_pretrained(tmpdir)
+        print(f"Saved model to {tmpdir}")
+
+        # Load using AutoModel (automatically detects model_type)
+        loaded_model = AutoModel.from_pretrained(tmpdir)
+        print(f"Loaded: {type(loaded_model).__name__}")
+        print(f"Config: {loaded_model.config}")
