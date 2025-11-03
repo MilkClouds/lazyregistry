@@ -15,19 +15,43 @@ References:
 from collections import UserDict
 from typing import Generic, TypeVar, Union, overload
 
-from pydantic import ImportString as ImportStringType
+from pydantic import ImportString as PydanticImportString
 from pydantic import TypeAdapter
 
-__all__ = ["LazyImportDict", "Registry", "Namespace", "NAMESPACE"]
+__all__ = ["ImportString", "LazyImportDict", "Registry", "Namespace", "NAMESPACE"]
 
-adapter = TypeAdapter(ImportStringType)
+_import_adapter = TypeAdapter(PydanticImportString)
 
 K = TypeVar("K")
 V = TypeVar("V")
 
 
 class ImportString(str):
-    """String that represents an import path."""
+    """String that represents an import path.
+
+    Examples:
+        >>> import_str = ImportString("json:dumps")
+        >>> func = import_str.load()
+        >>> func({"key": "value"})
+        '{"key": "value"}'
+    """
+
+    def load(self):
+        """Import and return the object referenced by this import string.
+
+        Returns:
+            The imported object.
+
+        Raises:
+            pydantic.ValidationError: If the import string is invalid or the module/attribute cannot be imported.
+
+        Examples:
+            >>> import_str = ImportString("json:dumps")
+            >>> func = import_str.load()
+            >>> callable(func)
+            True
+        """
+        return _import_adapter.validate_python(self)
 
 
 class LazyImportDict(UserDict[K, V], Generic[K, V]):
@@ -59,7 +83,7 @@ class LazyImportDict(UserDict[K, V], Generic[K, V]):
     def __getitem__(self, key: K) -> V:
         value = self.data[key]
         if isinstance(value, ImportString):
-            self.data[key] = adapter.validate_python(value)  # type: ignore[assignment]
+            self.data[key] = _import_adapter.validate_python(value)  # type: ignore[assignment]
         return self.data[key]
 
 

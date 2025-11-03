@@ -129,6 +129,18 @@ class Tokenizer(PretrainedMixin[TokenizerConfig]):
 
 ### Core Classes
 
+**`ImportString`** - String that represents an import path with lazy loading capability
+```python
+from lazyregistry import ImportString
+
+# Create an import string
+import_str = ImportString("json:dumps")
+
+# Load the object when needed
+func = import_str.load()
+func({"key": "value"})  # '{"key": "value"}'
+```
+
 **`Registry[K, V]`** - Named registry with lazy import support
 ```python
 registry = Registry(name="plugins")
