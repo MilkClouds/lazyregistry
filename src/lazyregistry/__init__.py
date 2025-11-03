@@ -17,5 +17,5 @@ __all__ = [
     "LazyImportDict",
     "Registry",
     "Namespace",
-    "NAMESPACE",
+    "NAMESPACE"
 ]

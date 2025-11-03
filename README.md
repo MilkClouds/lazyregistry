@@ -1,6 +1,6 @@
 # lazyregistry
 
-A lightweight Python library for lazy-loading registries with namespace support and type safety.
+A lightweight Python library for lazy-loading registries with namespace support and type safety
 
 ## Installation
 
@@ -37,31 +37,11 @@ serializer = registry["json"]
 
 ## Examples
 
-Run examples with: `uv run python examples/<example>.py`
+Run examples: `uv run python examples/<example>.py`
 
-### Basic Usage
+### 1. Plugin System
 
-See [`examples/basic_usage.py`](examples/basic_usage.py):
-
-```python
-from lazyregistry import Registry, NAMESPACE
-
-# Simple registry
-registry = Registry(name="plugins")
-registry.register("json", "json:dumps")
-registry.register("pickle", "pickle:dumps")
-
-# Using global namespace
-NAMESPACE["parsers"].register("json", "json:loads")
-NAMESPACE["writers"].register("json", "json:dumps")
-
-# Access from anywhere
-parser = NAMESPACE["parsers"]["json"]
-```
-
-### Plugin System
-
-See [`examples/plugin_system.py`](examples/plugin_system.py):
+[`examples/plugin_system.py`](examples/plugin_system.py) - Extensible plugin architecture with decorator-based registration:
 
 ```python
 from lazyregistry import Registry
@@ -76,21 +56,23 @@ def plugin(name: str):
 
 @plugin("uppercase")
 class UppercasePlugin:
-    def execute(self, data: str) -> str:
-        return data.upper()
+    def process(self, text: str) -> str:
+        return text.upper()
 
-# Use plugin
-plugin_class = PLUGINS["uppercase"]
-result = plugin_class().execute("hello")  # "HELLO"
+# Execute plugins
+PluginManager.execute("uppercase", "hello")  # "HELLO"
+PluginManager.pipeline("hello", "uppercase", "reverse")  # "OLLEH"
 ```
 
-### Pretrained Models (HuggingFace-style)
+### 2. Pretrained Models
 
-See [`examples/pretrained.py`](examples/pretrained.py) for a complete implementation:
+[`examples/pretrained.py`](examples/pretrained.py) - HuggingFace-style save/load with two patterns:
 
+**Basic (config only):**
 ```python
 from pydantic import BaseModel
-from lazyregistry import NAMESPACE, AutoRegistry, PretrainedMixin
+from lazyregistry import NAMESPACE
+from lazyregistry.pretrained import AutoRegistry, PretrainedMixin
 
 class ModelConfig(BaseModel):
     model_type: str
@@ -105,92 +87,77 @@ class AutoModel(AutoRegistry):
 class BertModel(PretrainedMixin[ModelConfig]):
     config_class = ModelConfig
 
-# Save and load
-config = ModelConfig(model_type="bert", hidden_size=1024)
-model = BertModel(config)
-model.save_pretrained("./my_model")
-
-# Auto-detect model type from config and load
-loaded = AutoModel.from_pretrained("./my_model")
+# Save and auto-load
+model = BertModel(ModelConfig(model_type="bert"))
+model.save_pretrained("./model")
+loaded = AutoModel.from_pretrained("./model")  # Auto-detects type
 ```
 
-## API
-
-### `Registry[K, V]`
-
+**Advanced (config + custom state):**
 ```python
-registry = Registry(name="my_registry")
+class Tokenizer(PretrainedMixin[TokenizerConfig]):
+    def __init__(self, config, vocab: dict[str, int] | None = None):
+        super().__init__(config)
+        self.vocab = vocab or {}
 
-# Register import string (lazy)
-registry.register("key", "module:object")
+    def save_pretrained(self, path):
+        super().save_pretrained(path)
+        # Save additional state (vocabulary)
+        Path(path).joinpath("vocab.txt").write_text(...)
 
-# Register instance (immediate)
-registry.register("key", obj, is_instance=True)
+    @classmethod
+    def from_pretrained(cls, path):
+        config = cls.config_class.model_validate_json(...)
+        vocab = ...  # Load vocabulary
+        return cls(config, vocab=vocab)
+```
 
-# Eager load (import immediately)
-registry.register("key", "module:object", eager_load=True)
+## API Reference
 
-# Access
+### Core Classes
+
+**`Registry[K, V]`** - Named registry with lazy import support
+```python
+registry = Registry(name="plugins")
+registry.register("key", "module:object")           # Lazy
+registry.register("key", obj, is_instance=True)     # Immediate
+registry.register("key", "module:object", eager_load=True)  # Load now
 value = registry["key"]
 ```
 
-### `Namespace`
-
+**`Namespace`** - Container for multiple registries
 ```python
 from lazyregistry import NAMESPACE
 
-# Auto-creates registries
 NAMESPACE["models"].register("bert", "transformers:BertModel")
-NAMESPACE["tokenizers"].register("bert", "transformers:BertTokenizer")
-
-# Access
 model = NAMESPACE["models"]["bert"]
 ```
 
-### `LazyImportDict[K, V]`
+**`LazyImportDict[K, V]`** - Base class for custom implementations (same API as `Registry` without `name`)
 
-Base class for custom implementations. Same API as `Registry` but without `name` parameter.
+### Pretrained Pattern
 
-### `PretrainedMixin[ConfigT]`
-
-Mixin class providing save_pretrained/from_pretrained functionality.
-
+**`PretrainedMixin[ConfigT]`** - Save/load with Pydantic config
 ```python
-from pydantic import BaseModel
-from lazyregistry import PretrainedMixin
-
-class MyConfig(BaseModel):
-    name: str
-    hidden_size: int = 768
-
 class MyModel(PretrainedMixin[MyConfig]):
     config_class = MyConfig
 
-# Save and load
-config = MyConfig(name="my_model")
-model = MyModel(config)
 model.save_pretrained("./path")
 loaded = MyModel.from_pretrained("./path")
 ```
 
-### `AutoRegistry`
-
-Auto-loader registry for pretrained models with type detection.
-
+**`AutoRegistry`** - Auto-detect model type from config
 ```python
-from lazyregistry import AutoRegistry, PretrainedMixin, NAMESPACE
-
 class AutoModel(AutoRegistry):
     registry = NAMESPACE["models"]
     config_class = ModelConfig
-    type_key = "model_type"  # Field in config to identify model type
+    type_key = "model_type"
 
 @AutoModel.register("bert")
 class BertModel(PretrainedMixin[ModelConfig]):
     config_class = ModelConfig
 
-# Automatically detects model type and loads
-model = AutoModel.from_pretrained("./path")
+loaded = AutoModel.from_pretrained("./path")  # Auto-detects type
 ```
 
 ## Why?
@@ -218,6 +185,19 @@ registry.register("c", "heavy_module_3:ClassC")
 # Only ClassA is imported
 component = registry["a"]
 ```
+
+## Testing
+
+Run tests with coverage:
+
+```bash
+uv run pytest tests/ --cov=lazyregistry --cov-report=term-missing
+```
+
+The test suite includes:
+- **Core registry tests** - LazyImportDict, Registry, Namespace functionality
+- **Pretrained tests** - save/load patterns, AutoRegistry, custom state
+- **Example tests** - Verify all examples run correctly
 
 ## License
 

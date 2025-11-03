@@ -10,7 +10,8 @@ Demonstrates:
 from pathlib import Path
 from typing import Any
 from pydantic import BaseModel
-from lazyregistry import NAMESPACE, AutoRegistry, PretrainedMixin
+from lazyregistry import NAMESPACE
+from lazyregistry.pretrained import AutoRegistry, PretrainedMixin
 
 
 # ============================================================================
