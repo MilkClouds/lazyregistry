@@ -12,8 +12,14 @@ A lightweight Python library for lazy-loading registries with namespace support 
 ## Installation
 
 ```bash
-pip install lazyregistry
+# Install with pip
+$ pip install lazyregistry
+
+# Add to your project with uv
+$ uv add "lazyregistry~=0.1.1"
 ```
+
+**Versioning Policy**: We follow [semantic versioning](https://semver.org/). Patch releases contain only bug fixes and performance improvements with **no API changes**. Minor releases may introduce new features while maintaining backward compatibility. Use `~=0.1.1` to automatically receive patch updates.
 
 ## Quick Start
 
