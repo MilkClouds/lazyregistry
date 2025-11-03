@@ -1,6 +1,6 @@
 [project]
 name = "lazyregistry"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A lightweight Python library for lazy-loading registries with namespace support and type safety."
 readme = "README.md"
 license = { text = "MIT" }
