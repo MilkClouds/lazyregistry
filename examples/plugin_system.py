@@ -105,4 +105,4 @@ if __name__ == "__main__":
 
     # Pipeline
     result = PluginManager.pipeline(text, "uppercase", "reverse")
-    print(f"\nPipeline (uppercase → reverse): '{result}'")
+    print(f"\nPipeline (uppercase -> reverse): '{result}'")
