@@ -31,3 +31,18 @@ source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
 version-file = "src/lazyregistry/_version.py"
+
+[tool.coverage.run]
+omit = [
+    "src/lazyregistry/_version.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

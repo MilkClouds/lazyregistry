@@ -11,15 +11,15 @@ from lazyregistry import NAMESPACE
 from lazyregistry.pretrained import AutoRegistry, PretrainedMixin
 
 
-class TestConfig(BaseModel):
-    """Test configuration."""
+class SimpleConfig(BaseModel):
+    """Simple configuration for testing."""
     model_type: str
     value: int = 42
 
 
-class TestModel(PretrainedMixin[TestConfig]):
-    """Test model for pretrained functionality."""
-    config_class = TestConfig
+class SimpleModel(PretrainedMixin[SimpleConfig]):
+    """Simple model for pretrained functionality testing."""
+    config_class = SimpleConfig
 
 
 class TestPretrainedMixin:
@@ -27,49 +27,49 @@ class TestPretrainedMixin:
 
     def test_init_with_config(self):
         """Test initialization with config."""
-        config = TestConfig(model_type="test", value=100)
-        model = TestModel(config)
+        config = SimpleConfig(model_type="test", value=100)
+        model = SimpleModel(config)
         assert model.config == config
         assert model.config.value == 100
 
     def test_save_pretrained(self):
         """Test saving pretrained model."""
-        config = TestConfig(model_type="test", value=123)
-        model = TestModel(config)
-        
+        config = SimpleConfig(model_type="test", value=123)
+        model = SimpleModel(config)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
-            
+
             # Check config file exists
             config_file = Path(tmpdir) / "config.json"
             assert config_file.exists()
-            
+
             # Check config content
-            saved_config = TestConfig.model_validate_json(config_file.read_text())
+            saved_config = SimpleConfig.model_validate_json(config_file.read_text())
             assert saved_config.model_type == "test"
             assert saved_config.value == 123
 
     def test_from_pretrained(self):
         """Test loading pretrained model."""
-        config = TestConfig(model_type="test", value=456)
-        model = TestModel(config)
-        
+        config = SimpleConfig(model_type="test", value=456)
+        model = SimpleModel(config)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
-            loaded = TestModel.from_pretrained(tmpdir)
-            
+            loaded = SimpleModel.from_pretrained(tmpdir)
+
             assert loaded.config.model_type == "test"
             assert loaded.config.value == 456
 
     def test_save_load_roundtrip(self):
         """Test save and load roundtrip."""
-        config = TestConfig(model_type="test", value=789)
-        model = TestModel(config)
-        
+        config = SimpleConfig(model_type="test", value=789)
+        model = SimpleModel(config)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
-            loaded = TestModel.from_pretrained(tmpdir)
-            
+            loaded = SimpleModel.from_pretrained(tmpdir)
+
             assert model.config == loaded.config
 
 
@@ -149,20 +149,20 @@ class TestCustomPretrained:
 class AutoTestModel(AutoRegistry):
     """Auto-loader for test models."""
     registry = NAMESPACE["test_models"]
-    config_class = TestConfig
+    config_class = SimpleConfig
     type_key = "model_type"
 
 
 @AutoTestModel.register("bert")
-class BertTestModel(PretrainedMixin[TestConfig]):
+class BertTestModel(PretrainedMixin[SimpleConfig]):
     """BERT test model."""
-    config_class = TestConfig
+    config_class = SimpleConfig
 
 
 @AutoTestModel.register("gpt")
-class GPTTestModel(PretrainedMixin[TestConfig]):
+class GPTTestModel(PretrainedMixin[SimpleConfig]):
     """GPT test model."""
-    config_class = TestConfig
+    config_class = SimpleConfig
 
 
 class TestAutoRegistry:
@@ -175,15 +175,15 @@ class TestAutoRegistry:
 
     def test_from_pretrained_auto_detect(self):
         """Test auto-detection from config."""
-        config = TestConfig(model_type="bert", value=999)
+        config = SimpleConfig(model_type="bert", value=999)
         model = BertTestModel(config)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
-            
+
             # Load using AutoRegistry (should auto-detect type)
             loaded = AutoTestModel.from_pretrained(tmpdir)
-            
+
             assert isinstance(loaded, BertTestModel)
             assert loaded.config.model_type == "bert"
             assert loaded.config.value == 999
@@ -191,22 +191,22 @@ class TestAutoRegistry:
     def test_from_pretrained_different_types(self):
         """Test loading different model types."""
         # Save BERT model
-        bert_config = TestConfig(model_type="bert", value=111)
+        bert_config = SimpleConfig(model_type="bert", value=111)
         bert_model = BertTestModel(bert_config)
-        
+
         # Save GPT model
-        gpt_config = TestConfig(model_type="gpt", value=222)
+        gpt_config = SimpleConfig(model_type="gpt", value=222)
         gpt_model = GPTTestModel(gpt_config)
-        
+
         with tempfile.TemporaryDirectory() as bert_dir:
             with tempfile.TemporaryDirectory() as gpt_dir:
                 bert_model.save_pretrained(bert_dir)
                 gpt_model.save_pretrained(gpt_dir)
-                
+
                 # Load both
                 loaded_bert = AutoTestModel.from_pretrained(bert_dir)
                 loaded_gpt = AutoTestModel.from_pretrained(gpt_dir)
-                
+
                 assert isinstance(loaded_bert, BertTestModel)
                 assert isinstance(loaded_gpt, GPTTestModel)
                 assert loaded_bert.config.value == 111
@@ -214,8 +214,8 @@ class TestAutoRegistry:
 
     def test_unknown_model_type(self):
         """Test error for unknown model type."""
-        config = TestConfig(model_type="unknown", value=0)
-        model = TestModel(config)
+        config = SimpleConfig(model_type="unknown", value=0)
+        model = SimpleModel(config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
