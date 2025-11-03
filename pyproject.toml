@@ -3,13 +3,34 @@ name = "lazyregistry"
 version = "0.1.0"
 description = "A lightweight Python library for lazy-loading registries with namespace support and type safety."
 readme = "README.md"
+license = { text = "MIT" }
 authors = [
     { name = "Suhwan Choi", email = "milkclouds00@gmail.com" }
+]
+keywords = ["registry", "lazy-loading", "plugin", "namespace", "pretrained", "type-safe"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/milkclouds/lazyregistry"
+Repository = "https://github.com/milkclouds/lazyregistry"
+Issues = "https://github.com/milkclouds/lazyregistry/issues"
+Changelog = "https://github.com/milkclouds/lazyregistry/releases"
 
 [dependency-groups]
 dev = [

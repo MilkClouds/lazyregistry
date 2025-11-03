@@ -1,5 +1,12 @@
 # lazyregistry
 
+[![CI](https://github.com/milkclouds/lazyregistry/actions/workflows/ci.yml/badge.svg)](https://github.com/milkclouds/lazyregistry/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/milkclouds/lazyregistry/branch/main/graph/badge.svg)](https://codecov.io/gh/milkclouds/lazyregistry)
+[![PyPI version](https://badge.fury.io/py/lazyregistry.svg)](https://badge.fury.io/py/lazyregistry)
+[![Python Versions](https://img.shields.io/pypi/pyversions/lazyregistry.svg)](https://pypi.org/project/lazyregistry/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
 A lightweight Python library for lazy-loading registries with namespace support and type safety
 
 ## Installation
