@@ -43,7 +43,7 @@ class ImportString(str):
             The imported object.
 
         Raises:
-            ImportError: If the module or attribute cannot be imported.
+            pydantic.ValidationError: If the import string is invalid or the module/attribute cannot be imported.
 
         Examples:
             >>> import_str = ImportString("json:dumps")
