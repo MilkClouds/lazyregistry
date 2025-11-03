@@ -2,13 +2,13 @@
 
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional
 
 import pytest
 from pydantic import BaseModel
 
 from lazyregistry import NAMESPACE
-from lazyregistry.pretrained import AutoRegistry, PretrainedMixin
+from lazyregistry.pretrained import AutoRegistry, PathLike, PretrainedMixin
 
 
 class SimpleConfig(BaseModel):
@@ -87,11 +87,11 @@ class CustomModel(PretrainedMixin[CustomConfig]):
 
     config_class = CustomConfig
 
-    def __init__(self, config: CustomConfig, vocab: dict[str, int] | None = None):
+    def __init__(self, config: CustomConfig, vocab: Optional[Dict[str, int]] = None):
         super().__init__(config)
         self.vocab = vocab or {}
 
-    def save_pretrained(self, save_directory: str | Path) -> None:
+    def save_pretrained(self, save_directory: PathLike) -> None:
         """Save config and vocabulary."""
         super().save_pretrained(save_directory)
 
@@ -102,7 +102,7 @@ class CustomModel(PretrainedMixin[CustomConfig]):
         vocab_file.write_text("\n".join(word for word, _ in sorted_vocab))
 
     @classmethod
-    def from_pretrained(cls, pretrained_path: str | Path, **kwargs: Any) -> "CustomModel":
+    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> "CustomModel":
         """Load config and vocabulary."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())
