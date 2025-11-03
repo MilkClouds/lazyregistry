@@ -10,7 +10,7 @@ from typing import Any, ClassVar, Generic, Type, TypeVar
 
 from pydantic import BaseModel
 
-from lazyregistry import Registry
+from lazyregistry.registry import Registry
 
 ConfigT = TypeVar("ConfigT", bound=BaseModel)
 ModelT = TypeVar("ModelT", bound="PretrainedMixin")

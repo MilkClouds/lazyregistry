@@ -1,110 +1,21 @@
 """
 Lazy import registry with namespace support.
 
-References:
-- Namespace concept from Python official tutorial:
-  https://docs.python.org/3/tutorial/classes.html
-- Entry point design (group/name/object reference pattern):
-  https://packaging.python.org/en/latest/specifications/entry-points/
-  Note: Adopts nothing from entry point implementation, but refers to the group/name/object reference design.
-- Registry pattern with parent/scope/location from mmengine:
-  https://mmengine.readthedocs.io/en/latest/advanced_tutorials/registry.html
-  https://github.com/open-mmlab/mmdetection/blob/main/mmdet/registry.py
-- Auto-classes and from_pretrained/save_pretrained pattern from transformers:
-  https://github.com/huggingface/transformers/blob/17312eb3bb331a16b28737c9075dcbe65c545d0a/src/transformers/models/auto/processing_auto.py#L187-L193
+A lightweight library for managing lazy-loading registries with type safety
+and built-in support for pretrained model patterns.
 """
 
-from collections import UserDict
-from typing import Generic, TypeVar, overload
 
-from pydantic import ImportString as ImportStringType
-from pydantic import TypeAdapter
-
-adapter = TypeAdapter(ImportStringType)
-
-K = TypeVar("K")
-V = TypeVar("V")
-
-
-class ImportString(str):
-    """String that represents an import path."""
-
-
-class LazyImportDict(UserDict[K, V], Generic[K, V]):
-    """Dictionary that lazily imports values as needed."""
-
-    @overload
-    def register(self, key: K, value: V, *, is_instance: bool = True, eager_load: bool = False) -> None: ...
-
-    @overload
-    def register(self, key: K, value: str, *, is_instance: bool = False, eager_load: bool = False) -> None: ...
-
-    def register(self, key: K, value: V | str, *, is_instance: bool = False, eager_load: bool = False) -> None:
-        """Register a value in the dictionary.
-
-        Args:
-            key: The key to register the value under.
-            value: Either an instance of V or an import string.
-            is_instance: If True, value is already an instance of V.
-                        If False, value is an import string.
-            eager_load: If True, immediately load the value.
-        """
-        if is_instance:
-            self.data[key] = value  # type: ignore[assignment]
-        else:
-            self.data[key] = ImportString(value)  # type: ignore[assignment]
-        if eager_load:
-            self[key]
-
-    def __getitem__(self, key: K) -> V:
-        value = self.data[key]
-        if isinstance(value, ImportString):
-            self.data[key] = adapter.validate_python(value)  # type: ignore[assignment]
-        return self.data[key]
-
-
-class Registry(LazyImportDict[K, V], Generic[K, V]):
-    """A named registry with lazy import support.
-
-    Examples:
-        >>> registry = Registry(name="plugins")
-        >>> registry.register("my_plugin", "mypackage.plugins:MyPlugin")
-        >>> plugin = registry["my_plugin"]  # Lazily imported on first access
-    """
-
-    def __init__(self, *args, name: str, **kwargs):
-        self.name = name
-        super().__init__(*args, **kwargs)
-
-
-class Namespace(UserDict[str, Registry]):
-    """Container for multiple named registries.
-
-    Each registry is completely isolated from others.
-
-    Examples:
-        >>> namespace = Namespace()
-        >>> namespace["plugins"].register("my_plugin", "mypackage:MyPlugin")
-        >>> namespace["handlers"].register("my_handler", "mypackage:MyHandler")
-        >>> plugin = namespace["plugins"]["my_plugin"]
-    """
-
-    def __missing__(self, key: str) -> Registry:
-        self.data[key] = Registry(name=key)
-        return self.data[key]
-
-
-NAMESPACE = Namespace()
-
-# Export pretrained utilities
-from lazyregistry.pretrained import AutoRegistry, PretrainedMixin
+from .registry import (
+    LazyImportDict,
+    NAMESPACE,
+    Namespace,
+    Registry
+)
 
 __all__ = [
-    "ImportString",
     "LazyImportDict",
     "Registry",
     "Namespace",
     "NAMESPACE",
-    "PretrainedMixin",
-    "AutoRegistry",
 ]
