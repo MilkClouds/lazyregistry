@@ -95,3 +95,16 @@ class Namespace(UserDict[str, Registry]):
 
 
 NAMESPACE = Namespace()
+
+# Export pretrained utilities
+from lazyregistry.pretrained import AutoRegistry, PretrainedMixin
+
+__all__ = [
+    "ImportString",
+    "LazyImportDict",
+    "Registry",
+    "Namespace",
+    "NAMESPACE",
+    "PretrainedMixin",
+    "AutoRegistry",
+]

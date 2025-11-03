@@ -33,6 +33,7 @@ serializer = registry["json"]
 - **Namespaces** - Organize multiple registries
 - **Type-safe** - Full generic type support
 - **Eager loading** - Optional immediate import for critical components
+- **Pretrained models** - Built-in support for save_pretrained/from_pretrained pattern
 
 ## Examples
 
@@ -88,27 +89,29 @@ result = plugin_class().execute("hello")  # "HELLO"
 See [`examples/pretrained.py`](examples/pretrained.py) for a complete implementation:
 
 ```python
-from lazyregistry import NAMESPACE
+from pydantic import BaseModel
+from lazyregistry import NAMESPACE, AutoRegistry, PretrainedMixin
 
-MODEL_REGISTRY = NAMESPACE["models"]
+class ModelConfig(BaseModel):
+    model_type: str
+    hidden_size: int = 768
 
-class AutoModel:
-    @classmethod
-    def register(cls, model_type: str):
-        def decorator(model_class):
-            MODEL_REGISTRY.register(model_type, model_class, is_instance=True)
-            return model_class
-        return decorator
+class AutoModel(AutoRegistry):
+    registry = NAMESPACE["models"]
+    config_class = ModelConfig
+    type_key = "model_type"
 
 @AutoModel.register("bert")
-class BertModel:
-    def save_pretrained(self, path): ...
+class BertModel(PretrainedMixin[ModelConfig]):
+    config_class = ModelConfig
 
-    @classmethod
-    def from_pretrained(cls, path): ...
+# Save and load
+config = ModelConfig(model_type="bert", hidden_size=1024)
+model = BertModel(config)
+model.save_pretrained("./my_model")
 
 # Auto-detect model type from config and load
-model = AutoModel.from_pretrained("./saved_model")
+loaded = AutoModel.from_pretrained("./my_model")
 ```
 
 ## API
@@ -147,6 +150,48 @@ model = NAMESPACE["models"]["bert"]
 ### `LazyImportDict[K, V]`
 
 Base class for custom implementations. Same API as `Registry` but without `name` parameter.
+
+### `PretrainedMixin[ConfigT]`
+
+Mixin class providing save_pretrained/from_pretrained functionality.
+
+```python
+from pydantic import BaseModel
+from lazyregistry import PretrainedMixin
+
+class MyConfig(BaseModel):
+    name: str
+    hidden_size: int = 768
+
+class MyModel(PretrainedMixin[MyConfig]):
+    config_class = MyConfig
+
+# Save and load
+config = MyConfig(name="my_model")
+model = MyModel(config)
+model.save_pretrained("./path")
+loaded = MyModel.from_pretrained("./path")
+```
+
+### `AutoRegistry`
+
+Auto-loader registry for pretrained models with type detection.
+
+```python
+from lazyregistry import AutoRegistry, PretrainedMixin, NAMESPACE
+
+class AutoModel(AutoRegistry):
+    registry = NAMESPACE["models"]
+    config_class = ModelConfig
+    type_key = "model_type"  # Field in config to identify model type
+
+@AutoModel.register("bert")
+class BertModel(PretrainedMixin[ModelConfig]):
+    config_class = ModelConfig
+
+# Automatically detects model type and loads
+model = AutoModel.from_pretrained("./path")
+```
 
 ## Why?
 
