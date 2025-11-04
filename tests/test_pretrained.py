@@ -158,14 +158,14 @@ class AutoTestModel(AutoRegistry):
     type_key = "model_type"
 
 
-@AutoTestModel.register("bert")
+@AutoTestModel.register_module("bert")
 class BertTestModel(PretrainedMixin[SimpleConfig]):
     """BERT test model."""
 
     config_class = SimpleConfig
 
 
-@AutoTestModel.register("gpt")
+@AutoTestModel.register_module("gpt")
 class GPTTestModel(PretrainedMixin[SimpleConfig]):
     """GPT test model."""
 
@@ -175,10 +175,40 @@ class GPTTestModel(PretrainedMixin[SimpleConfig]):
 class TestAutoRegistry:
     """Test AutoRegistry class."""
 
-    def test_register_decorator(self):
-        """Test register decorator."""
+    def test_register_module(self):
+        """Test register_module decorator and dict-style registration."""
+        # Decorator registration
         assert "bert" in NAMESPACE["test_models"]
         assert "gpt" in NAMESPACE["test_models"]
+
+        # Dict-style registration
+        class T5TestModel(PretrainedMixin[SimpleConfig]):
+            config_class = SimpleConfig
+
+        AutoTestModel.registry["t5"] = T5TestModel
+        assert "t5" in NAMESPACE["test_models"]
+
+    def test_bulk_registration_via_update(self):
+        """Test bulk registration via .registry.update()."""
+
+        class RobertaTestModel(PretrainedMixin[SimpleConfig]):
+            config_class = SimpleConfig
+
+        class AlbertTestModel(PretrainedMixin[SimpleConfig]):
+            config_class = SimpleConfig
+
+        # Bulk registration
+        AutoTestModel.registry.update(
+            {
+                "roberta": RobertaTestModel,
+                "albert": AlbertTestModel,
+            }
+        )
+
+        assert "roberta" in NAMESPACE["test_models"]
+        assert "albert" in NAMESPACE["test_models"]
+        assert NAMESPACE["test_models"]["roberta"] is RobertaTestModel
+        assert NAMESPACE["test_models"]["albert"] is AlbertTestModel
 
     def test_from_pretrained_auto_detect(self):
         """Test auto-detection from config."""

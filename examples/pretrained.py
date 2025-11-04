@@ -5,6 +5,7 @@ Demonstrates:
 1. Basic save_pretrained/from_pretrained with config only
 2. Custom state (vocabulary) beyond configuration
 3. AutoRegistry for automatic model type detection
+4. Both decorator and direct .registry registration methods
 """
 
 from pathlib import Path
@@ -36,14 +37,14 @@ class AutoModel(AutoRegistry):
     type_key = "model_type"
 
 
-@AutoModel.register("bert")
+@AutoModel.register_module("bert")
 class BertModel(PretrainedMixin[ModelConfig]):
     """BERT model - saves/loads config only."""
 
     config_class = ModelConfig
 
 
-@AutoModel.register("gpt2")
+@AutoModel.register_module("gpt2")
 class GPT2Model(PretrainedMixin[ModelConfig]):
     """GPT-2 model - saves/loads config only."""
 
@@ -113,11 +114,22 @@ class AutoTokenizer(AutoRegistry):
     type_key = "tokenizer_type"
 
 
-@AutoTokenizer.register("wordpiece")
+@AutoTokenizer.register_module("wordpiece")
 class WordPieceTokenizer(Tokenizer):
     """WordPiece tokenizer."""
 
     pass
+
+
+# Example: Direct registration without decorator
+class BPETokenizer(Tokenizer):
+    """BPE tokenizer."""
+
+    pass
+
+
+# Register using dict-style assignment (alternative to decorator)
+AutoTokenizer.registry["bpe"] = BPETokenizer
 
 
 # ============================================================================

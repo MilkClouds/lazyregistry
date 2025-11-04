@@ -27,11 +27,11 @@ from lazyregistry import Registry
 registry = Registry(name="plugins")
 
 # Register by import string (lazy - imported on access)
-registry.register("json", "json:dumps")
+registry["json"] = "json:dumps"
 
 # Register by instance (immediate - already imported)
 import pickle
-registry.register("pickle", pickle.dumps, is_instance=True)
+registry["pickle"] = pickle.dumps
 
 # Import happens here
 serializer = registry["json"]
@@ -61,7 +61,7 @@ PLUGINS = Registry(name="plugins")
 
 def plugin(name: str):
     def decorator(cls):
-        PLUGINS.register(name, cls, is_instance=True)
+        PLUGINS[name] = cls
         return cls
     return decorator
 
@@ -94,9 +94,14 @@ class AutoModel(AutoRegistry):
     config_class = ModelConfig
     type_key = "model_type"
 
-@AutoModel.register("bert")
+# Register with decorator
+@AutoModel.register_module("bert")
 class BertModel(PretrainedMixin[ModelConfig]):
     config_class = ModelConfig
+
+# Or register directly
+AutoModel.registry["gpt2"] = "transformers:GPT2Model"  # Lazy import
+AutoModel.registry["t5"] = T5Model                     # Direct
 
 # Save and auto-load
 model = BertModel(ModelConfig(model_type="bert"))
@@ -142,21 +147,44 @@ func({"key": "value"})  # '{"key": "value"}'
 **`Registry[K, V]`** - Named registry with lazy import support
 ```python
 registry = Registry(name="plugins")
-registry.register("key", "module:object")           # Lazy
-registry.register("key", obj, is_instance=True)     # Immediate
-registry.register("key", "module:object", eager_load=True)  # Load now
-value = registry["key"]
+
+# Dict-style assignment (auto-converts strings to ImportString)
+registry["key"] = "module:object"      # Lazy
+registry["key2"] = actual_object       # Immediate
+
+# Configure behavior
+registry.eager_load = True
+registry["key3"] = "module:object"     # Eager load
 ```
 
 **`Namespace`** - Container for multiple registries
 ```python
 from lazyregistry import NAMESPACE
 
-NAMESPACE["models"].register("bert", "transformers:BertModel")
+# Direct access to .registry for registration
+NAMESPACE["models"]["bert"] = "transformers:BertModel"
+NAMESPACE["models"]["gpt2"] = GPT2Model
+
+# Access registered items
 model = NAMESPACE["models"]["bert"]
 ```
 
-**`LazyImportDict[K, V]`** - Base class for custom implementations (same API as `Registry` without `name`)
+**`LazyImportDict[K, V]`** - Base class for custom implementations
+
+Same dict-style API as `Registry`, but with configurable behavior:
+```python
+from lazyregistry.registry import LazyImportDict
+
+registry = LazyImportDict()
+
+# Configure behavior via attributes
+registry.auto_import_strings = True   # Auto-convert strings to ImportString (default: True)
+registry.eager_load = False           # Load immediately on assignment (default: False)
+
+# Use like a normal dict
+registry["key"] = "module:object"
+registry.update({"key2": "module:object2"})
+```
 
 ### Pretrained Pattern
 
@@ -170,17 +198,38 @@ loaded = MyModel.from_pretrained("./path")
 ```
 
 **`AutoRegistry`** - Auto-detect model type from config
+
+Three ways to register:
 ```python
+from pydantic import BaseModel
+
+class ModelConfig(BaseModel):
+    model_type: str
+    hidden_size: int = 768
+
 class AutoModel(AutoRegistry):
     registry = NAMESPACE["models"]
     config_class = ModelConfig
     type_key = "model_type"
 
-@AutoModel.register("bert")
+# 1. Decorator registration
+@AutoModel.register_module("bert")
 class BertModel(PretrainedMixin[ModelConfig]):
     config_class = ModelConfig
 
-loaded = AutoModel.from_pretrained("./path")  # Auto-detects type
+# 2. Direct registration via .registry
+AutoModel.registry["gpt2"] = GPT2Model                   # Direct instance
+AutoModel.registry["t5"] = "transformers:T5Model"        # Lazy import string
+
+# 3. Bulk registration via .registry.update() - useful for many models
+AutoModel.registry.update({
+    "roberta": RobertaModel,
+    "albert": "transformers:AlbertModel",
+    "electra": "transformers:ElectraModel",
+})
+
+# Auto-detect and load
+loaded = AutoModel.from_pretrained("./path")  # Detects type from config
 ```
 
 ## Why?

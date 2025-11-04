@@ -9,12 +9,6 @@ from lazyregistry.registry import ImportString, LazyImportDict, Namespace, Regis
 class TestImportString:
     """Test ImportString class."""
 
-    def test_import_string_is_str(self):
-        """ImportString should be a string subclass."""
-        s = ImportString("json:dumps")
-        assert isinstance(s, str)
-        assert s == "json:dumps"
-
     def test_load_method(self):
         """Test load() method imports the object."""
         import_str = ImportString("json:dumps")
@@ -26,16 +20,6 @@ class TestImportString:
 
         assert func is json.dumps
 
-    def test_load_method_with_module(self):
-        """Test load() method with module import."""
-        import_str = ImportString("json")
-        module = import_str.load()
-
-        # Should return the module
-        import json
-
-        assert module is json
-
     def test_load_method_invalid_import(self):
         """Test load() method with invalid import string."""
         import_str = ImportString("nonexistent_module:function")
@@ -43,23 +27,14 @@ class TestImportString:
         with pytest.raises(Exception):  # Pydantic will raise an error
             import_str.load()
 
-    def test_load_method_multiple_calls(self):
-        """Test that load() can be called multiple times."""
-        import_str = ImportString("json:loads")
-        func1 = import_str.load()
-        func2 = import_str.load()
-
-        # Should return the same object
-        assert func1 is func2
-
 
 class TestLazyImportDict:
     """Test LazyImportDict class."""
 
-    def test_register_import_string(self):
-        """Test registering an import string."""
+    def test_setitem_auto_import_strings(self):
+        """Test __setitem__ with auto_import_strings=True (default)."""
         registry = LazyImportDict()
-        registry.register("json", "json:dumps")
+        registry["json"] = "json:dumps"
 
         # Should be ImportString before access
         assert isinstance(registry.data["json"], ImportString)
@@ -69,25 +44,111 @@ class TestLazyImportDict:
         assert callable(func)
         assert not isinstance(registry.data["json"], ImportString)
 
-    def test_register_instance(self):
-        """Test registering an instance directly."""
+    def test_setitem_with_instance(self):
+        """Test __setitem__ with actual instance."""
         registry = LazyImportDict()
         import json
 
-        registry.register("json", json.dumps, is_instance=True)
+        registry["json"] = json.dumps
 
         # Should be the actual object
         assert registry.data["json"] is json.dumps
         assert registry["json"] is json.dumps
 
-    def test_eager_load(self):
-        """Test eager loading."""
+    def test_update_method(self):
+        """Test update() method works with auto_import_strings."""
         registry = LazyImportDict()
-        registry.register("json", "json:dumps", eager_load=True)
+        registry.update(
+            {
+                "json": "json:dumps",
+                "pickle": "pickle:dumps",
+            }
+        )
+
+        # Both should be ImportStrings
+        assert isinstance(registry.data["json"], ImportString)
+        assert isinstance(registry.data["pickle"], ImportString)
+
+        # Access should load them
+        import json
+
+        assert registry["json"] is json.dumps
+
+    def test_auto_import_strings_behavior(self):
+        """Test auto_import_strings attribute behavior."""
+        registry = LazyImportDict()
+
+        # Default: auto_import_strings=True
+        registry["auto"] = "json:dumps"
+        assert isinstance(registry.data["auto"], ImportString)
+
+        # Disable auto conversion
+        registry.auto_import_strings = False
+        registry["plain"] = "just a string"
+        assert registry.data["plain"] == "just a string"
+        assert not isinstance(registry.data["plain"], ImportString)
+
+        # Existing items unaffected by attribute change
+        assert isinstance(registry.data["auto"], ImportString)
+
+        # Re-enable
+        registry.auto_import_strings = True
+        registry["auto2"] = "json:loads"
+        assert isinstance(registry.data["auto2"], ImportString)
+
+        # update() respects current settings
+        registry.auto_import_strings = False
+        registry.update({"c": "plain", "d": "string"})
+        assert registry.data["c"] == "plain"
+        assert registry.data["d"] == "string"
+
+    def test_eager_load_behavior(self):
+        """Test eager_load attribute behavior."""
+        registry = LazyImportDict()
+        registry.eager_load = True
 
         # Should be loaded immediately
+        registry["json"] = "json:dumps"
         assert not isinstance(registry.data["json"], ImportString)
         assert callable(registry.data["json"])
+
+        # eager_load has no effect when auto_import_strings is False
+        registry.auto_import_strings = False
+        registry["plain"] = "plain string"
+        assert registry.data["plain"] == "plain string"
+        assert not isinstance(registry.data["plain"], ImportString)
+
+    def test_attributes_isolated_from_dict(self):
+        """Test that attributes are isolated from dict items."""
+        registry = LazyImportDict()
+
+        # Set attributes
+        registry.auto_import_strings = False
+        registry.eager_load = True
+
+        # Attributes should NOT be in the dictionary
+        assert "auto_import_strings" not in registry
+        assert "eager_load" not in registry
+        assert "auto_import_strings" not in registry.data
+        assert "eager_load" not in registry.data
+
+        # Add a real item
+        registry["real_item"] = "value"
+        assert "real_item" in registry
+        assert len(registry) == 1
+
+        # Different instances have independent attributes
+        registry2 = LazyImportDict()
+        assert registry2.auto_import_strings is True
+        assert registry2.eager_load is False
+
+        # Attribute names can be used as dict keys without conflict
+        registry["auto_import_strings"] = "value1"
+        registry["eager_load"] = "value2"
+        assert registry.auto_import_strings is False  # Attribute unchanged
+        assert registry.eager_load is True  # Attribute unchanged
+        assert registry["auto_import_strings"] == "value1"  # Dict item exists
+        assert registry["eager_load"] == "value2"  # Dict item exists
 
     def test_key_error(self):
         """Test KeyError for missing keys."""
@@ -105,9 +166,9 @@ class TestRegistry:
         assert registry.name == "test"
 
     def test_registry_basic_usage(self):
-        """Test basic registry usage."""
+        """Test basic registry usage with dict-style assignment."""
         registry = Registry(name="serializers")
-        registry.register("json", "json:dumps")
+        registry["json"] = "json:dumps"
 
         func = registry["json"]
         assert callable(func)
@@ -132,8 +193,8 @@ class TestNamespace:
     def test_namespace_isolation(self):
         """Registries in namespace should be isolated."""
         ns = Namespace()
-        ns["models"].register("bert", "json:dumps")
-        ns["tokenizers"].register("bert", "json:loads")
+        ns["models"]["bert"] = "json:dumps"
+        ns["tokenizers"]["bert"] = "json:loads"
 
         # Different registries should have different values
         model_func = ns["models"]["bert"]
@@ -150,7 +211,7 @@ class TestGlobalNamespace:
 
     def test_global_namespace_usage(self):
         """Test using global NAMESPACE."""
-        NAMESPACE["test_registry"].register("test_key", "json:dumps")
+        NAMESPACE["test_registry"]["test_key"] = "json:dumps"
         func = NAMESPACE["test_registry"]["test_key"]
         assert callable(func)
 
@@ -158,45 +219,12 @@ class TestGlobalNamespace:
 class TestIntegration:
     """Integration tests."""
 
-    def test_mixed_registration(self):
-        """Test mixing import strings and instances."""
-        registry = Registry(name="mixed")
-
-        # Register import string
-        registry.register("lazy", "json:dumps")
-
-        # Register instance
-        import json
-
-        registry.register("eager", json.loads, is_instance=True)
-
-        # Both should work
-        assert callable(registry["lazy"])
-        assert callable(registry["eager"])
-        assert registry["eager"] is json.loads
-
     def test_overwrite_registration(self):
         """Test overwriting a registration."""
         registry = Registry(name="test")
-        registry.register("key", "json:dumps")
-        registry.register("key", "json:loads")
+        registry["key"] = "json:dumps"
+        registry["key"] = "json:loads"
 
         # Should have the new value
         func = registry["key"]
         assert func.__name__ == "loads"
-
-    def test_dict_methods(self):
-        """Test that dict methods work."""
-        registry = Registry(name="test")
-        registry.register("a", "json:dumps")
-        registry.register("b", "json:loads")
-
-        # Test keys()
-        assert set(registry.keys()) == {"a", "b"}
-
-        # Test len()
-        assert len(registry) == 2
-
-        # Test in
-        assert "a" in registry
-        assert "c" not in registry

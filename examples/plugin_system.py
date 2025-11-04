@@ -17,7 +17,7 @@ def plugin(name: str):
     """Decorator to register a plugin by name."""
 
     def decorator(cls: type) -> type:
-        PLUGINS.register(name, cls, is_instance=True)
+        PLUGINS[name] = cls
         return cls
 
     return decorator
