@@ -13,7 +13,7 @@ References:
 """
 
 from collections import UserDict
-from typing import Generic, TypeVar, Union, overload
+from typing import Generic, TypeVar, Union
 
 from pydantic import ImportString as PydanticImportString
 from pydantic import TypeAdapter
@@ -37,53 +37,39 @@ class ImportString(str):
     """
 
     def load(self):
-        """Import and return the object referenced by this import string.
-
-        Returns:
-            The imported object.
-
-        Raises:
-            pydantic.ValidationError: If the import string is invalid or the module/attribute cannot be imported.
-
-        Examples:
-            >>> import_str = ImportString("json:dumps")
-            >>> func = import_str.load()
-            >>> callable(func)
-            True
-        """
+        """Import and return the object referenced by this import string."""
         return _import_adapter.validate_python(self)
 
 
 class LazyImportDict(UserDict[K, V], Generic[K, V]):
-    """Dictionary that lazily imports values as needed."""
+    """Dictionary that lazily imports values as needed.
 
-    @overload
-    def register(self, key: K, value: V, *, is_instance: bool = True, eager_load: bool = False) -> None: ...
+    Attributes:
+        auto_import_strings: If True, string values are automatically converted to ImportString.
+        eager_load: If True, values are immediately loaded upon assignment.
 
-    @overload
-    def register(self, key: K, value: str, *, is_instance: bool = False, eager_load: bool = False) -> None: ...
+    Examples:
+        >>> registry = LazyImportDict()
+        >>> registry["json"] = "json:dumps"  # Auto-converted to ImportString
+        >>> registry.update({"pickle": "pickle:dumps"})
+    """
 
-    def register(self, key: K, value: Union[V, str], *, is_instance: bool = False, eager_load: bool = False) -> None:
-        """Register a value in the dictionary.
+    auto_import_strings: bool = True
+    eager_load: bool = False
 
-        Args:
-            key: The key to register the value under.
-            value: Either an instance of V or an import string.
-            is_instance: If True, value is already an instance of V.
-                        If False, value is an import string.
-            eager_load: If True, immediately load the value.
-        """
-        if is_instance:
-            self.data[key] = value  # type: ignore[assignment]
-        else:
+    def __setitem__(self, key: K, value: Union[V, str]) -> None:
+        if self.auto_import_strings and isinstance(value, str):
             self.data[key] = ImportString(value)  # type: ignore[assignment]
-        if eager_load:
-            self[key]
+        else:
+            self.data[key] = value  # type: ignore[assignment]
+
+        if self.eager_load:
+            _ = self[key]
 
     def __getitem__(self, key: K) -> V:
         value = self.data[key]
         if isinstance(value, ImportString):
-            self.data[key] = _import_adapter.validate_python(value)  # type: ignore[assignment]
+            self.data[key] = value.load()
         return self.data[key]
 
 
@@ -92,7 +78,7 @@ class Registry(LazyImportDict[K, V], Generic[K, V]):
 
     Examples:
         >>> registry = Registry(name="plugins")
-        >>> registry.register("my_plugin", "mypackage.plugins:MyPlugin")
+        >>> registry["my_plugin"] = "mypackage.plugins:MyPlugin"
         >>> plugin = registry["my_plugin"]  # Lazily imported on first access
     """
 
@@ -108,8 +94,8 @@ class Namespace(UserDict[str, Registry]):
 
     Examples:
         >>> namespace = Namespace()
-        >>> namespace["plugins"].register("my_plugin", "mypackage:MyPlugin")
-        >>> namespace["handlers"].register("my_handler", "mypackage:MyHandler")
+        >>> namespace["plugins"]["my_plugin"] = "mypackage:MyPlugin"
+        >>> namespace["handlers"]["my_handler"] = "mypackage:MyHandler"
         >>> plugin = namespace["plugins"]["my_plugin"]
     """
 

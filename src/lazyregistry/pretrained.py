@@ -48,16 +48,10 @@ class PretrainedMixin(Generic[ConfigT]):
     config_filename: ClassVar[str] = "config.json"
 
     def __init__(self, config: ConfigT):
-        """Initialize with a configuration object."""
         self.config = config
 
     def save_pretrained(self, save_directory: PathLike) -> None:
-        """
-        Save the model configuration to a directory.
-
-        Args:
-            save_directory: Directory path where the config will be saved.
-        """
+        """Save the model configuration to a directory."""
         save_path = Path(save_directory)
         save_path.mkdir(parents=True, exist_ok=True)
 
@@ -66,27 +60,23 @@ class PretrainedMixin(Generic[ConfigT]):
 
     @classmethod
     def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> "PretrainedMixin":
-        """
-        Load a model from a saved configuration.
-
-        Args:
-            pretrained_path: Directory path containing the saved config.
-            **kwargs: Additional arguments passed to the model constructor.
-
-        Returns:
-            Instance of the model class.
-        """
+        """Load a model from a saved configuration."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())
-        return cls(config, **kwargs)
+        return cls(config, **kwargs)  # type: ignore[arg-type]
 
 
 class AutoRegistry(Generic[ModelT]):
     """
     Auto-loader registry for pretrained models.
 
-    Provides a decorator-based registration system and automatic model loading
+    Provides decorator-based registration and automatic model loading
     based on configuration type detection.
+
+    Registration methods:
+        1. Decorator: @AutoModel.register_module("model_type")
+        2. Direct: AutoModel.registry["model_type"] = ModelClass
+        3. Bulk: AutoModel.registry.update({...})
 
     Example:
         >>> from pydantic import BaseModel
@@ -96,20 +86,26 @@ class AutoRegistry(Generic[ModelT]):
         ...     model_type: str
         ...     hidden_size: int = 768
 
-        >>> MODEL_REGISTRY = NAMESPACE["models"]
-
         >>> class AutoModel(AutoRegistry):
-        ...     registry = MODEL_REGISTRY
+        ...     registry = NAMESPACE["models"]
         ...     config_class = ModelConfig
         ...     type_key = "model_type"
 
-        >>> @AutoModel.register("bert")
+        >>> # Decorator registration
+        >>> @AutoModel.register_module("bert")
         ... class BertModel(PretrainedMixin[ModelConfig]):
         ...     config_class = ModelConfig
 
-        >>> @AutoModel.register("gpt2")
-        ... class GPT2Model(PretrainedMixin[ModelConfig]):
-        ...     config_class = ModelConfig
+        >>> # Direct registration via .registry
+        >>> AutoModel.registry["gpt2"] = GPT2Model
+        >>> AutoModel.registry["t5"] = "transformers:T5Model"
+
+        >>> # Bulk registration via .registry.update() - useful for many models
+        >>> AutoModel.registry.update({
+        ...     "roberta": RobertaModel,
+        ...     "albert": "transformers:AlbertModel",
+        ...     "electra": "transformers:ElectraModel",
+        ... })
 
         >>> # Auto-detect and load based on config.model_type
         >>> model = AutoModel.from_pretrained("./saved_model")
@@ -127,55 +123,34 @@ class AutoRegistry(Generic[ModelT]):
         )
 
     @classmethod
-    def register(cls, model_type: str):
+    def register_module(cls, model_type: str):
         """
         Decorator to register a model class.
 
-        Args:
-            model_type: Unique identifier for the model type.
+        For registering external classes or bulk registration of multiple models,
+        use direct .registry access (e.g., AutoModel.registry["key"] = value or
+        AutoModel.registry.update({...})) instead.
 
-        Returns:
-            Decorator function that registers the class.
+        Args:
+            model_type: Model type identifier (must match config's type_key value).
 
         Example:
-            >>> @AutoModel.register("bert")
+            >>> @AutoModel.register_module("bert")
             ... class BertModel(PretrainedMixin):
-            ...     pass
+            ...     config_class = ModelConfig
         """
 
         def decorator(model_class: Type[ModelT]) -> Type[ModelT]:
-            cls.registry.register(model_type, model_class, is_instance=True)
+            cls.registry[model_type] = model_class
             return model_class
 
         return decorator
 
     @classmethod
     def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> ModelT:
-        """
-        Load a model from a saved configuration.
-
-        Automatically detects the model type from the configuration file
-        and loads the appropriate registered model class.
-
-        Args:
-            pretrained_path: Directory path containing the saved config.
-            **kwargs: Additional arguments passed to the model constructor.
-
-        Returns:
-            Instance of the registered model class.
-
-        Raises:
-            KeyError: If the model type is not registered.
-            FileNotFoundError: If the config file doesn't exist.
-        """
+        """Load a model by auto-detecting type from config."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())
-
-        # Get model type from config
         model_type = getattr(config, cls.type_key)
-
-        # Load the registered model class
         model_class = cls.registry[model_type]
-
-        # Use the model class's from_pretrained method
         return model_class.from_pretrained(pretrained_path, **kwargs)

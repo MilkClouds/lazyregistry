@@ -158,14 +158,14 @@ class AutoTestModel(AutoRegistry):
     type_key = "model_type"
 
 
-@AutoTestModel.register("bert")
+@AutoTestModel.register_module("bert")
 class BertTestModel(PretrainedMixin[SimpleConfig]):
     """BERT test model."""
 
     config_class = SimpleConfig
 
 
-@AutoTestModel.register("gpt")
+@AutoTestModel.register_module("gpt")
 class GPTTestModel(PretrainedMixin[SimpleConfig]):
     """GPT test model."""
 
@@ -175,8 +175,8 @@ class GPTTestModel(PretrainedMixin[SimpleConfig]):
 class TestAutoRegistry:
     """Test AutoRegistry class."""
 
-    def test_register_decorator(self):
-        """Test register decorator."""
+    def test_register_module(self):
+        """Test register_module decorator."""
         assert "bert" in NAMESPACE["test_models"]
         assert "gpt" in NAMESPACE["test_models"]
 
@@ -235,3 +235,87 @@ class TestAutoRegistry:
         """Test that AutoRegistry cannot be instantiated."""
         with pytest.raises(TypeError, match="should not be instantiated"):
             AutoTestModel()
+
+    def test_dict_style_registration(self):
+        """Test dict-style registration."""
+
+        class T5TestModel(PretrainedMixin[SimpleConfig]):
+            config_class = SimpleConfig
+
+        # Register using dict-style assignment
+        AutoTestModel.registry["t5"] = T5TestModel
+
+        # Verify registration
+        assert "t5" in NAMESPACE["test_models"]
+
+        # Test loading
+        config = SimpleConfig(model_type="t5", value=555)
+        model = T5TestModel(config)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model.save_pretrained(tmpdir)
+            loaded = AutoTestModel.from_pretrained(tmpdir)
+
+            assert isinstance(loaded, T5TestModel)
+            assert loaded.config.value == 555
+
+    def test_bulk_registration_via_update(self):
+        """Test bulk registration via .registry.update()."""
+
+        class RobertaTestModel(PretrainedMixin[SimpleConfig]):
+            config_class = SimpleConfig
+
+        class AlbertTestModel(PretrainedMixin[SimpleConfig]):
+            config_class = SimpleConfig
+
+        # Bulk registration
+        AutoTestModel.registry.update(
+            {
+                "roberta": RobertaTestModel,
+                "albert": AlbertTestModel,
+            }
+        )
+
+        assert "roberta" in NAMESPACE["test_models"]
+        assert "albert" in NAMESPACE["test_models"]
+        assert NAMESPACE["test_models"]["roberta"] is RobertaTestModel
+        assert NAMESPACE["test_models"]["albert"] is AlbertTestModel
+
+    def test_decorator_vs_dict_style(self):
+        """Test that decorator and dict-style registration work the same."""
+
+        class DecoratorModel(PretrainedMixin[SimpleConfig]):
+            config_class = SimpleConfig
+
+        class DictModel(PretrainedMixin[SimpleConfig]):
+            config_class = SimpleConfig
+
+        # Register with decorator
+        AutoTestModel.register_module("decorator_test")(DecoratorModel)
+
+        # Register with dict-style via .registry
+        AutoTestModel.registry["dict_test"] = DictModel
+
+        # Both should be registered
+        assert "decorator_test" in NAMESPACE["test_models"]
+        assert "dict_test" in NAMESPACE["test_models"]
+
+        # Both should work the same way
+        config1 = SimpleConfig(model_type="decorator_test", value=111)
+        config2 = SimpleConfig(model_type="dict_test", value=222)
+
+        model1 = DecoratorModel(config1)
+        model2 = DictModel(config2)
+
+        with tempfile.TemporaryDirectory() as tmpdir1:
+            with tempfile.TemporaryDirectory() as tmpdir2:
+                model1.save_pretrained(tmpdir1)
+                model2.save_pretrained(tmpdir2)
+
+                loaded1 = AutoTestModel.from_pretrained(tmpdir1)
+                loaded2 = AutoTestModel.from_pretrained(tmpdir2)
+
+                assert isinstance(loaded1, DecoratorModel)
+                assert isinstance(loaded2, DictModel)
+                assert loaded1.config.value == 111
+                assert loaded2.config.value == 222
