@@ -18,6 +18,7 @@ __all__ = ["PathLike", "PretrainedMixin", "AutoRegistry"]
 PathLike = Union[str, os.PathLike]
 ConfigT = TypeVar("ConfigT", bound=BaseModel)
 ModelT = TypeVar("ModelT", bound="PretrainedMixin")
+AutoConfigT = TypeVar("AutoConfigT", bound=BaseModel)
 
 
 class PretrainedMixin(Generic[ConfigT]):
@@ -44,7 +45,7 @@ class PretrainedMixin(Generic[ConfigT]):
         >>> loaded = MyModel.from_pretrained("./my_model")
     """
 
-    config_class: ClassVar[Type[BaseModel]]
+    config_class: ClassVar[Type[ConfigT]]
     config_filename: ClassVar[str] = "config.json"
 
     def __init__(self, config: ConfigT):
@@ -66,7 +67,7 @@ class PretrainedMixin(Generic[ConfigT]):
         return cls(config, **kwargs)  # type: ignore[arg-type]
 
 
-class AutoRegistry(Generic[ModelT]):
+class AutoRegistry(Generic[ModelT, AutoConfigT]):
     """
     Auto-loader registry for pretrained models.
 
@@ -112,7 +113,7 @@ class AutoRegistry(Generic[ModelT]):
     """
 
     registry: ClassVar[Registry]
-    config_class: ClassVar[Type[BaseModel]]
+    config_class: ClassVar[Type[AutoConfigT]]
     type_key: ClassVar[str] = "model_type"
     config_filename: ClassVar[str] = "config.json"
 
