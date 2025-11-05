@@ -112,7 +112,8 @@ AutoModel.registry["gpt2"] = "transformers:GPT2Model"  # Lazy import
 AutoModel.registry["t5"] = T5Model                     # Direct
 
 # Save and auto-load
-model = BertModel(BertConfig(hidden_size=1024))
+config = BertConfig(hidden_size=1024)
+model = BertModel(config=config)
 model.save_pretrained("./model")
 loaded = AutoModel.from_pretrained("./model")  # Auto-detects type
 ```
@@ -120,8 +121,8 @@ loaded = AutoModel.from_pretrained("./model")  # Auto-detects type
 **Advanced (config + custom state):**
 ```python
 class Tokenizer(PretrainedMixin):
-    def __init__(self, config: PretrainedConfig, vocab: dict[str, int] | None = None):
-        super().__init__(config)
+    def __init__(self, *args, vocab: dict[str, int] | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.vocab = vocab or {}
 
     def save_pretrained(self, path):
@@ -133,7 +134,7 @@ class Tokenizer(PretrainedMixin):
     def from_pretrained(cls, path):
         config = cls.config_class.model_validate_json(...)
         vocab = ...  # Load vocabulary
-        return cls(config, vocab=vocab)
+        return cls(config=config, vocab=vocab)
 ```
 
 ## API Reference
