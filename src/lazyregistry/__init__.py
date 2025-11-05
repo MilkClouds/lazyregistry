@@ -1,14 +1,3 @@
-"""
-Lazy import registry with namespace support.
-
-A lightweight library for managing lazy-loading registries with type safety
-and built-in support for pretrained model patterns.
-"""
-
-from .registry import NAMESPACE, ImportString, LazyImportDict, Namespace, Registry
-
-__all__ = ["ImportString", "LazyImportDict", "Registry", "Namespace", "NAMESPACE"]
-
 # Version is managed by hatch-vcs from Git tags
 try:
     from ._version import __version__
@@ -20,3 +9,8 @@ except ImportError:  # pragma: no cover
         __version__ = version("lazyregistry")
     except Exception:
         __version__ = "0.0.0.dev0"
+
+
+from .registry import NAMESPACE, ImportString, LazyImportDict, Namespace, Registry
+
+__all__ = ["ImportString", "LazyImportDict", "Registry", "Namespace", "NAMESPACE"]
