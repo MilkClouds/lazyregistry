@@ -84,7 +84,7 @@ PluginManager.pipeline("hello", "uppercase", "reverse")  # "OLLEH"
 from lazyregistry import NAMESPACE
 from lazyregistry.pretrained import AutoRegistry, PretrainedConfig, PretrainedMixin
 
-# Each model has its own config with hardcoded model_type
+# Each model has its own config with type identifier
 class BertConfig(PretrainedConfig):
     model_type: str = "bert"
     hidden_size: int = 768
@@ -210,11 +210,13 @@ loaded = MyModel.from_pretrained("./path")
 
 **`AutoRegistry`** - Auto-detect model type from config
 
+The `type_key` parameter (defaults to "model_type") determines which config field is used for type detection.
+
 Three ways to register:
 ```python
 from lazyregistry.pretrained import PretrainedConfig, PretrainedMixin
 
-# Each model has its own config class
+# Each model has its own config class with type identifier
 class BertConfig(PretrainedConfig):
     model_type: str = "bert"
     hidden_size: int = 768
@@ -230,7 +232,7 @@ class BaseModel(PretrainedMixin):
 class AutoModel(AutoRegistry):
     registry = NAMESPACE["models"]
     config_class = PretrainedConfig
-    type_key = "model_type"
+    type_key = "model_type"  # Can use any field name
 
 # 1. Decorator registration - models inherit from BaseModel
 @AutoModel.register_module("bert")

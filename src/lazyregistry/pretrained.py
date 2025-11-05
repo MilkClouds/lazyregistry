@@ -22,17 +22,23 @@ class PretrainedConfig(BaseModel):
     """
     Base configuration class for pretrained models.
 
-    All model-specific configs should inherit from this class and set
-    a hardcoded model_type value.
+    All model-specific configs should inherit from this class. When using
+    AutoRegistry, configs should include a type identifier field (by default
+    "model_type", but configurable via AutoRegistry.type_key).
 
     Example:
         >>> class BertConfig(PretrainedConfig):
         ...     model_type: str = "bert"
         ...     hidden_size: int = 768
         ...     num_layers: int = 12
+
+        >>> # Or use a custom type key
+        >>> class CustomConfig(PretrainedConfig):
+        ...     architecture: str = "custom"
+        ...     params: int = 100
     """
 
-    model_type: str
+    pass
 
 
 class PretrainedMixin:
@@ -44,10 +50,11 @@ class PretrainedMixin:
 
     Recommended pattern: Create a base model class and have each specific model
     inherit from it. Each model should have its own config class (inheriting from
-    PretrainedConfig) with a hardcoded model_type field for use with AutoRegistry.
+    PretrainedConfig). If using AutoRegistry, include a type identifier field in
+    your config (commonly "model_type", but configurable).
 
     Example:
-        >>> # Model-specific config with hardcoded type
+        >>> # Model-specific config with type identifier
         >>> class BertConfig(PretrainedConfig):
         ...     model_type: str = "bert"
         ...     hidden_size: int = 768
@@ -60,7 +67,7 @@ class PretrainedMixin:
         >>> class BertModel(BaseModel):
         ...     config_class = BertConfig
 
-        >>> # No need to specify model_type when creating config
+        >>> # Create and save model
         >>> config = BertConfig(hidden_size=1024)
         >>> model = BertModel(config)
         >>> model.save_pretrained("./bert_model")
@@ -98,17 +105,18 @@ class AutoRegistry:
 
     Recommended pattern: Create a base model class and base config class. Each
     specific model inherits from the base model and has its own config class
-    (inheriting from PretrainedConfig) with a hardcoded model_type value.
+    (inheriting from PretrainedConfig) with a type identifier field. The field
+    name is configurable via the type_key class variable (defaults to "model_type").
 
     Registration methods:
-        1. Decorator: @AutoModel.register_module("model_type")
-        2. Direct: AutoModel.registry["model_type"] = ModelClass
+        1. Decorator: @AutoModel.register_module("type_value")
+        2. Direct: AutoModel.registry["type_value"] = ModelClass
         3. Bulk: AutoModel.registry.update({...})
 
     Example:
         >>> from lazyregistry import NAMESPACE
 
-        >>> # Model-specific configs with hardcoded model_type
+        >>> # Model-specific configs with type identifier
         >>> class BertConfig(PretrainedConfig):
         ...     model_type: str = "bert"
         ...     hidden_size: int = 768
@@ -124,7 +132,7 @@ class AutoRegistry:
         >>> class AutoModel(AutoRegistry):
         ...     registry = NAMESPACE["models"]
         ...     config_class = PretrainedConfig
-        ...     type_key = "model_type"
+        ...     type_key = "model_type"  # Can be any field name
 
         >>> # Decorator registration - models inherit from BaseModel
         >>> @AutoModel.register_module("bert")
@@ -142,7 +150,7 @@ class AutoRegistry:
         ...     "electra": "transformers:ElectraModel",
         ... })
 
-        >>> # Auto-detect and load based on config.model_type
+        >>> # Auto-detect and load based on config's type_key field
         >>> config = BertConfig(hidden_size=1024)
         >>> model = BertModel(config)
         >>> model.save_pretrained("./saved_model")
@@ -170,11 +178,11 @@ class AutoRegistry:
         AutoModel.registry.update({...})) instead.
 
         Args:
-            model_type: Model type identifier (must match the hardcoded model_type
-                       in the model's config class).
+            model_type: Model type identifier (should match the value of the type
+                       identifier field in the model's config class).
 
         Example:
-            >>> # Config with hardcoded model_type
+            >>> # Config with type identifier field
             >>> class BertConfig(PretrainedConfig):
             ...     model_type: str = "bert"
 
@@ -195,9 +203,19 @@ class AutoRegistry:
 
     @classmethod
     def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> PretrainedMixin:
-        """Load a model by auto-detecting type from config."""
+        """Load a model by auto-detecting type from config.
+
+        This method reads the config JSON to extract the type identifier,
+        then delegates to the appropriate model class's from_pretrained method.
+        """
         config_file = Path(pretrained_path) / cls.config_filename
-        config = cls.config_class.model_validate_json(config_file.read_text())
-        model_type = getattr(config, cls.type_key)
+        # Temporarily allow extra fields to extract the type key without validation errors
+        config = cls.config_class.model_validate_json(config_file.read_text(), extra="allow")
+        model_type = getattr(config, cls.type_key, None)
+        if model_type is None:
+            raise ValueError(
+                f"Config does not contain required type key '{cls.type_key}'. "
+                f"Make sure your config includes this field."
+            )
         model_class = cls.registry[model_type]
         return model_class.from_pretrained(pretrained_path, **kwargs)
