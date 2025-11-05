@@ -292,6 +292,26 @@ class TestAutoRegistry:
             with pytest.raises(KeyError):
                 AutoTestModel.from_pretrained(tmpdir)
 
+    def test_missing_type_key(self):
+        """Test error when config doesn't have the required type key."""
+
+        # Create a config without the type key
+        class NoTypeKeyConfig(PretrainedConfig):
+            value: int = 42
+
+        class NoTypeKeyModel(PretrainedMixin):
+            config_class = NoTypeKeyConfig
+
+        config = NoTypeKeyConfig(value=99)
+        model = NoTypeKeyModel(config)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model.save_pretrained(tmpdir)
+
+            # Should raise ValueError for missing type key
+            with pytest.raises(ValueError, match="does not contain required type key"):
+                AutoTestModel.from_pretrained(tmpdir)
+
     def test_cannot_instantiate(self):
         """Test that AutoRegistry cannot be instantiated."""
         with pytest.raises(TypeError, match="should not be instantiated"):
