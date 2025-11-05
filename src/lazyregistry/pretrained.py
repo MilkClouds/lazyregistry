@@ -77,7 +77,7 @@ class PretrainedMixin:
     config_class: ClassVar[Type[PretrainedConfig]]
     config_filename: ClassVar[str] = "config.json"
 
-    def __init__(self, *args, config: PretrainedConfig, **kwargs):
+    def __init__(self, *args, config, **kwargs):
         self.config = config
 
     def save_pretrained(self, save_directory: PathLike) -> None:
@@ -195,7 +195,7 @@ class AutoRegistry:
             ...     config_class = BertConfig
         """
 
-        def decorator(model_class: Type[PretrainedMixin]) -> Type[PretrainedMixin]:
+        def decorator(model_class):
             cls.registry[model_type] = model_class
             return model_class
 
