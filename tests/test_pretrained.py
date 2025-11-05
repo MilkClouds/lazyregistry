@@ -56,14 +56,14 @@ class TestPretrainedMixin:
     def test_init_with_config(self):
         """Test initialization with config."""
         config = SimpleConfig(value=100)
-        model = SimpleModel(config)
+        model = SimpleModel(config=config)
         assert model.config == config
         assert model.config.value == 100
 
     def test_save_pretrained(self):
         """Test saving pretrained model."""
         config = SimpleConfig(value=123)
-        model = SimpleModel(config)
+        model = SimpleModel(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
@@ -80,7 +80,7 @@ class TestPretrainedMixin:
     def test_from_pretrained(self):
         """Test loading pretrained model."""
         config = SimpleConfig(value=456)
-        model = SimpleModel(config)
+        model = SimpleModel(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
@@ -92,7 +92,7 @@ class TestPretrainedMixin:
     def test_save_load_roundtrip(self):
         """Test save and load roundtrip."""
         config = SimpleConfig(value=789)
-        model = SimpleModel(config)
+        model = SimpleModel(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
@@ -113,8 +113,8 @@ class CustomModel(PretrainedMixin):
 
     config_class = CustomConfig
 
-    def __init__(self, config: CustomConfig, vocab: Optional[Dict[str, int]] = None):
-        super().__init__(config)
+    def __init__(self, *args, vocab: Optional[Dict[str, int]] = None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.vocab = vocab or {}
 
     def save_pretrained(self, save_directory: PathLike) -> None:
@@ -140,7 +140,7 @@ class CustomModel(PretrainedMixin):
             words = vocab_file.read_text().strip().split("\n")
             vocab = {word: idx for idx, word in enumerate(words)}
 
-        return cls(config, vocab=vocab, **kwargs)
+        return cls(config=config, vocab=vocab, **kwargs)
 
 
 class TestCustomPretrained:
@@ -150,7 +150,7 @@ class TestCustomPretrained:
         """Test saving custom state."""
         config = CustomConfig(model_type="custom", vocab_size=5)
         vocab = {"<unk>": 0, "hello": 1, "world": 2}
-        model = CustomModel(config, vocab=vocab)
+        model = CustomModel(config=config, vocab=vocab)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
@@ -167,7 +167,7 @@ class TestCustomPretrained:
         """Test loading custom state."""
         config = CustomConfig(model_type="custom", vocab_size=5)
         vocab = {"<unk>": 0, "hello": 1, "world": 2}
-        model = CustomModel(config, vocab=vocab)
+        model = CustomModel(config=config, vocab=vocab)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
@@ -239,7 +239,7 @@ class TestAutoRegistry:
     def test_from_pretrained_auto_detect(self):
         """Test auto-detection from config."""
         config = BertConfig(value=999)
-        model = BertTestModel(config)
+        model = BertTestModel(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
@@ -255,11 +255,11 @@ class TestAutoRegistry:
         """Test loading different model types."""
         # Save BERT model
         bert_config = BertConfig(value=111)
-        bert_model = BertTestModel(bert_config)
+        bert_model = BertTestModel(config=bert_config)
 
         # Save GPT model
         gpt_config = GPTConfig(value=222)
-        gpt_model = GPTTestModel(gpt_config)
+        gpt_model = GPTTestModel(config=gpt_config)
 
         with tempfile.TemporaryDirectory() as bert_dir:
             with tempfile.TemporaryDirectory() as gpt_dir:
@@ -283,7 +283,7 @@ class TestAutoRegistry:
             config_class = UnknownConfig
 
         config = UnknownConfig(value=0)
-        model = UnknownModel(config)
+        model = UnknownModel(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
@@ -303,7 +303,7 @@ class TestAutoRegistry:
             config_class = NoTypeKeyConfig
 
         config = NoTypeKeyConfig(value=99)
-        model = NoTypeKeyModel(config)
+        model = NoTypeKeyModel(config=config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)

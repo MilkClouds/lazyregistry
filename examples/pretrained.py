@@ -89,8 +89,8 @@ class BaseTokenizer(PretrainedMixin):
 
     config_class = PretrainedConfig
 
-    def __init__(self, config: PretrainedConfig, vocab: Optional[Dict[str, int]] = None):
-        super().__init__(config)
+    def __init__(self, *args, vocab: Optional[Dict[str, int]] = None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.vocab = vocab or {"<unk>": 0, "<pad>": 1}
 
     def save_pretrained(self, save_directory: PathLike) -> None:
@@ -116,7 +116,7 @@ class BaseTokenizer(PretrainedMixin):
             words = vocab_file.read_text().strip().split("\n")
             vocab = {word: idx for idx, word in enumerate(words)}
 
-        return cls(config, vocab=vocab, **kwargs)
+        return cls(config=config, vocab=vocab, **kwargs)
 
     def encode(self, text: str) -> list[int]:
         """Convert text to token IDs."""
@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
     # Create and save model with model-specific config
     config = BertConfig(hidden_size=1024, num_layers=24)
-    model = BertModel(config)
+    model = BertModel(config=config)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         model.save_pretrained(tmpdir)
@@ -179,10 +179,11 @@ if __name__ == "__main__":
     # Create tokenizer with custom vocabulary using model-specific config
     config = WordPieceConfig(max_length=128)
     vocab = {"<unk>": 0, "<pad>": 1, "hello": 2, "world": 3, "python": 4}
-    tokenizer = WordPieceTokenizer(config, vocab=vocab)
+    tokenizer = WordPieceTokenizer(config=config, vocab=vocab)
 
     text = "Hello World Python"
     tokens = tokenizer.encode(text)
+    tokenizer.config
     print(f"Original: {text}")
     print(f"Tokens: {tokens}")
 

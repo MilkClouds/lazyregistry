@@ -69,7 +69,7 @@ class PretrainedMixin:
 
         >>> # Create and save model
         >>> config = BertConfig(hidden_size=1024)
-        >>> model = BertModel(config)
+        >>> model = BertModel(config=config)
         >>> model.save_pretrained("./bert_model")
         >>> loaded = BertModel.from_pretrained("./bert_model")
     """
@@ -77,7 +77,7 @@ class PretrainedMixin:
     config_class: ClassVar[Type[PretrainedConfig]]
     config_filename: ClassVar[str] = "config.json"
 
-    def __init__(self, config: PretrainedConfig):
+    def __init__(self, *args, config: PretrainedConfig, **kwargs):
         self.config = config
 
     def save_pretrained(self, save_directory: PathLike) -> None:
@@ -93,7 +93,7 @@ class PretrainedMixin:
         """Load a model from a saved configuration."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())
-        return cls(config, **kwargs)  # type: ignore[arg-type]
+        return cls(config=config, **kwargs)  # type: ignore[arg-type]
 
 
 class AutoRegistry:
@@ -152,7 +152,7 @@ class AutoRegistry:
 
         >>> # Auto-detect and load based on config's type_key field
         >>> config = BertConfig(hidden_size=1024)
-        >>> model = BertModel(config)
+        >>> model = BertModel(config=config)
         >>> model.save_pretrained("./saved_model")
         >>> loaded = AutoModel.from_pretrained("./saved_model")  # Auto-detects as BertModel
     """
