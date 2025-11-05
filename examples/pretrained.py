@@ -11,44 +11,56 @@ Demonstrates:
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel
-
 from lazyregistry import NAMESPACE
-from lazyregistry.pretrained import AutoRegistry, PathLike, PretrainedMixin
+from lazyregistry.pretrained import AutoRegistry, PathLike, PretrainedConfig, PretrainedMixin
 
 # ============================================================================
 # Example 1: Basic pretrained models (config only)
 # ============================================================================
 
 
-class ModelConfig(BaseModel):
-    """Model configuration."""
+class BertConfig(PretrainedConfig):
+    """BERT-specific configuration."""
 
-    model_type: str
+    model_type: str = "bert"
     hidden_size: int = 768
     num_layers: int = 12
+
+
+class GPT2Config(PretrainedConfig):
+    """GPT-2-specific configuration."""
+
+    model_type: str = "gpt2"
+    hidden_size: int = 768
+    num_layers: int = 12
+
+
+class BaseModel(PretrainedMixin):
+    """Base model class for all transformer models."""
+
+    config_class = PretrainedConfig
 
 
 class AutoModel(AutoRegistry):
     """Auto-loader for registered models."""
 
     registry = NAMESPACE["models"]
-    config_class = ModelConfig
+    config_class = PretrainedConfig
     type_key = "model_type"
 
 
 @AutoModel.register_module("bert")
-class BertModel(PretrainedMixin[ModelConfig]):
+class BertModel(BaseModel):
     """BERT model - saves/loads config only."""
 
-    config_class = ModelConfig
+    config_class = BertConfig
 
 
 @AutoModel.register_module("gpt2")
-class GPT2Model(PretrainedMixin[ModelConfig]):
+class GPT2Model(BaseModel):
     """GPT-2 model - saves/loads config only."""
 
-    config_class = ModelConfig
+    config_class = GPT2Config
 
 
 # ============================================================================
@@ -56,20 +68,28 @@ class GPT2Model(PretrainedMixin[ModelConfig]):
 # ============================================================================
 
 
-class TokenizerConfig(BaseModel):
-    """Tokenizer configuration."""
+class WordPieceConfig(PretrainedConfig):
+    """WordPiece tokenizer configuration."""
 
-    tokenizer_type: str
+    model_type: str = "wordpiece"
     max_length: int = 512
     lowercase: bool = True
 
 
-class Tokenizer(PretrainedMixin[TokenizerConfig]):
-    """Tokenizer with vocabulary state."""
+class BPEConfig(PretrainedConfig):
+    """BPE tokenizer configuration."""
 
-    config_class = TokenizerConfig
+    model_type: str = "bpe"
+    max_length: int = 512
+    lowercase: bool = True
 
-    def __init__(self, config: TokenizerConfig, vocab: Optional[Dict[str, int]] = None):
+
+class BaseTokenizer(PretrainedMixin):
+    """Base tokenizer with vocabulary state."""
+
+    config_class = PretrainedConfig
+
+    def __init__(self, config: PretrainedConfig, vocab: Optional[Dict[str, int]] = None):
         super().__init__(config)
         self.vocab = vocab or {"<unk>": 0, "<pad>": 1}
 
@@ -84,7 +104,7 @@ class Tokenizer(PretrainedMixin[TokenizerConfig]):
         vocab_file.write_text("\n".join(word for word, _ in sorted_vocab))
 
     @classmethod
-    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> "Tokenizer":
+    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> "BaseTokenizer":
         """Load config AND vocabulary."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())
@@ -110,22 +130,22 @@ class AutoTokenizer(AutoRegistry):
     """Auto-loader for tokenizers."""
 
     registry = NAMESPACE["tokenizers"]
-    config_class = TokenizerConfig
-    type_key = "tokenizer_type"
+    config_class = PretrainedConfig
+    type_key = "model_type"
 
 
 @AutoTokenizer.register_module("wordpiece")
-class WordPieceTokenizer(Tokenizer):
+class WordPieceTokenizer(BaseTokenizer):
     """WordPiece tokenizer."""
 
-    pass
+    config_class = WordPieceConfig
 
 
 # Example: Direct registration without decorator
-class BPETokenizer(Tokenizer):
+class BPETokenizer(BaseTokenizer):
     """BPE tokenizer."""
 
-    pass
+    config_class = BPEConfig
 
 
 # Register using dict-style assignment (alternative to decorator)
@@ -141,8 +161,8 @@ if __name__ == "__main__":
 
     print("Example 1: Basic Model (config only)")
 
-    # Create and save model
-    config = ModelConfig(model_type="bert", hidden_size=1024, num_layers=24)
+    # Create and save model with model-specific config
+    config = BertConfig(hidden_size=1024, num_layers=24)
     model = BertModel(config)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -156,8 +176,8 @@ if __name__ == "__main__":
 
     print("\nExample 2: Tokenizer (config + vocabulary)")
 
-    # Create tokenizer with custom vocabulary
-    config = TokenizerConfig(tokenizer_type="wordpiece", max_length=128)
+    # Create tokenizer with custom vocabulary using model-specific config
+    config = WordPieceConfig(max_length=128)
     vocab = {"<unk>": 0, "<pad>": 1, "hello": 2, "world": 3, "python": 4}
     tokenizer = WordPieceTokenizer(config, vocab=vocab)
 

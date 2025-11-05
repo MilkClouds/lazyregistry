@@ -81,38 +81,46 @@ PluginManager.pipeline("hello", "uppercase", "reverse")  # "OLLEH"
 
 **Basic (config only):**
 ```python
-from pydantic import BaseModel
 from lazyregistry import NAMESPACE
-from lazyregistry.pretrained import AutoRegistry, PretrainedMixin
+from lazyregistry.pretrained import AutoRegistry, PretrainedConfig, PretrainedMixin
 
-class ModelConfig(BaseModel):
-    model_type: str
+# Each model has its own config with hardcoded model_type
+class BertConfig(PretrainedConfig):
+    model_type: str = "bert"
     hidden_size: int = 768
+
+class GPT2Config(PretrainedConfig):
+    model_type: str = "gpt2"
+    hidden_size: int = 768
+
+# Base model class
+class BaseModel(PretrainedMixin):
+    config_class = PretrainedConfig
 
 class AutoModel(AutoRegistry):
     registry = NAMESPACE["models"]
-    config_class = ModelConfig
+    config_class = PretrainedConfig
     type_key = "model_type"
 
-# Register with decorator
+# Register with decorator - models inherit from BaseModel
 @AutoModel.register_module("bert")
-class BertModel(PretrainedMixin[ModelConfig]):
-    config_class = ModelConfig
+class BertModel(BaseModel):
+    config_class = BertConfig
 
 # Or register directly
 AutoModel.registry["gpt2"] = "transformers:GPT2Model"  # Lazy import
 AutoModel.registry["t5"] = T5Model                     # Direct
 
 # Save and auto-load
-model = BertModel(ModelConfig(model_type="bert"))
+model = BertModel(BertConfig(hidden_size=1024))
 model.save_pretrained("./model")
 loaded = AutoModel.from_pretrained("./model")  # Auto-detects type
 ```
 
 **Advanced (config + custom state):**
 ```python
-class Tokenizer(PretrainedMixin[TokenizerConfig]):
-    def __init__(self, config, vocab: dict[str, int] | None = None):
+class Tokenizer(PretrainedMixin):
+    def __init__(self, config: PretrainedConfig, vocab: dict[str, int] | None = None):
         super().__init__(config)
         self.vocab = vocab or {}
 
@@ -188,9 +196,12 @@ registry.update({"key2": "module:object2"})
 
 ### Pretrained Pattern
 
-**`PretrainedMixin[ConfigT]`** - Save/load with Pydantic config
+**`PretrainedMixin`** - Save/load with Pydantic config
 ```python
-class MyModel(PretrainedMixin[MyConfig]):
+class MyConfig(PretrainedConfig):
+    model_type: str = "my_model"
+
+class MyModel(PretrainedMixin):
     config_class = MyConfig
 
 model.save_pretrained("./path")
@@ -201,21 +212,30 @@ loaded = MyModel.from_pretrained("./path")
 
 Three ways to register:
 ```python
-from pydantic import BaseModel
+from lazyregistry.pretrained import PretrainedConfig, PretrainedMixin
 
-class ModelConfig(BaseModel):
-    model_type: str
+# Each model has its own config class
+class BertConfig(PretrainedConfig):
+    model_type: str = "bert"
     hidden_size: int = 768
+
+class GPT2Config(PretrainedConfig):
+    model_type: str = "gpt2"
+    hidden_size: int = 768
+
+# Base model class
+class BaseModel(PretrainedMixin):
+    config_class = PretrainedConfig
 
 class AutoModel(AutoRegistry):
     registry = NAMESPACE["models"]
-    config_class = ModelConfig
+    config_class = PretrainedConfig
     type_key = "model_type"
 
-# 1. Decorator registration
+# 1. Decorator registration - models inherit from BaseModel
 @AutoModel.register_module("bert")
-class BertModel(PretrainedMixin[ModelConfig]):
-    config_class = ModelConfig
+class BertModel(BaseModel):
+    config_class = BertConfig
 
 # 2. Direct registration via .registry
 AutoModel.registry["gpt2"] = GPT2Model                   # Direct instance
