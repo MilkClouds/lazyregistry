@@ -17,6 +17,17 @@ jobs:
       - run: ruff check --fix
       - run: ruff format --check --diff
 
+  ty:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+      - name: Setup environments
+        run: |
+          uv venv
+          uv sync --dev
+      - run: uvx ty check
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
