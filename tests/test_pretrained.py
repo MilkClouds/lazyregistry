@@ -128,7 +128,7 @@ class CustomModel(PretrainedMixin):
         vocab_file.write_text("\n".join(word for word, _ in sorted_vocab))
 
     @classmethod
-    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> "CustomModel":
+    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any):
         """Load config and vocabulary."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())

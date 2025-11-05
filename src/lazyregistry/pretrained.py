@@ -89,7 +89,7 @@ class PretrainedMixin:
         config_file.write_text(self.config.model_dump_json(indent=2))
 
     @classmethod
-    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> "PretrainedMixin":
+    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any):
         """Load a model from a saved configuration."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())
@@ -202,7 +202,7 @@ class AutoRegistry:
         return decorator
 
     @classmethod
-    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any) -> PretrainedMixin:
+    def from_pretrained(cls, pretrained_path: PathLike, **kwargs: Any):
         """Load a model by auto-detecting type from config.
 
         This method reads the config JSON to extract the type identifier,
