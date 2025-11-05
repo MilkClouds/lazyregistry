@@ -17,6 +17,6 @@ except ImportError:  # pragma: no cover
     try:
         from importlib.metadata import version
 
-        __version__ = version("mediaref")
+        __version__ = version("lazyregistry")
     except Exception:
         __version__ = "0.0.0.dev0"
