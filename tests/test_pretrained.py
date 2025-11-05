@@ -5,20 +5,46 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import pytest
-from pydantic import BaseModel
 
 from lazyregistry import NAMESPACE
-from lazyregistry.pretrained import AutoRegistry, PathLike, PretrainedMixin
+from lazyregistry.pretrained import AutoRegistry, PathLike, PretrainedConfig, PretrainedMixin
 
 
-class SimpleConfig(BaseModel):
+class SimpleConfig(PretrainedConfig):
     """Simple configuration for testing."""
 
-    model_type: str
+    model_type: str = "test"
     value: int = 42
 
 
-class SimpleModel(PretrainedMixin[SimpleConfig]):
+class BertConfig(PretrainedConfig):
+    """BERT configuration for testing."""
+
+    model_type: str = "bert"
+    value: int = 42
+
+
+class GPTConfig(PretrainedConfig):
+    """GPT configuration for testing."""
+
+    model_type: str = "gpt"
+    value: int = 42
+
+
+class UnknownConfig(PretrainedConfig):
+    """Unknown configuration for testing."""
+
+    model_type: str = "unknown"
+    value: int = 42
+
+
+class BaseTestModel(PretrainedMixin):
+    """Base model for testing."""
+
+    config_class = PretrainedConfig
+
+
+class SimpleModel(BaseTestModel):
     """Simple model for pretrained functionality testing."""
 
     config_class = SimpleConfig
@@ -29,14 +55,14 @@ class TestPretrainedMixin:
 
     def test_init_with_config(self):
         """Test initialization with config."""
-        config = SimpleConfig(model_type="test", value=100)
+        config = SimpleConfig(value=100)
         model = SimpleModel(config)
         assert model.config == config
         assert model.config.value == 100
 
     def test_save_pretrained(self):
         """Test saving pretrained model."""
-        config = SimpleConfig(model_type="test", value=123)
+        config = SimpleConfig(value=123)
         model = SimpleModel(config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -53,7 +79,7 @@ class TestPretrainedMixin:
 
     def test_from_pretrained(self):
         """Test loading pretrained model."""
-        config = SimpleConfig(model_type="test", value=456)
+        config = SimpleConfig(value=456)
         model = SimpleModel(config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -65,7 +91,7 @@ class TestPretrainedMixin:
 
     def test_save_load_roundtrip(self):
         """Test save and load roundtrip."""
-        config = SimpleConfig(model_type="test", value=789)
+        config = SimpleConfig(value=789)
         model = SimpleModel(config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -75,14 +101,14 @@ class TestPretrainedMixin:
             assert model.config == loaded.config
 
 
-class CustomConfig(BaseModel):
+class CustomConfig(PretrainedConfig):
     """Config with custom state."""
 
-    model_type: str
+    model_type: str = "custom"
     vocab_size: int = 100
 
 
-class CustomModel(PretrainedMixin[CustomConfig]):
+class CustomModel(PretrainedMixin):
     """Model with custom state beyond config."""
 
     config_class = CustomConfig
@@ -154,22 +180,22 @@ class AutoTestModel(AutoRegistry):
     """Auto-loader for test models."""
 
     registry = NAMESPACE["test_models"]
-    config_class = SimpleConfig
+    config_class = PretrainedConfig
     type_key = "model_type"
 
 
 @AutoTestModel.register_module("bert")
-class BertTestModel(PretrainedMixin[SimpleConfig]):
+class BertTestModel(BaseTestModel):
     """BERT test model."""
 
-    config_class = SimpleConfig
+    config_class = BertConfig
 
 
 @AutoTestModel.register_module("gpt")
-class GPTTestModel(PretrainedMixin[SimpleConfig]):
+class GPTTestModel(BaseTestModel):
     """GPT test model."""
 
-    config_class = SimpleConfig
+    config_class = GPTConfig
 
 
 class TestAutoRegistry:
@@ -182,7 +208,7 @@ class TestAutoRegistry:
         assert "gpt" in NAMESPACE["test_models"]
 
         # Dict-style registration
-        class T5TestModel(PretrainedMixin[SimpleConfig]):
+        class T5TestModel(BaseTestModel):
             config_class = SimpleConfig
 
         AutoTestModel.registry["t5"] = T5TestModel
@@ -191,10 +217,10 @@ class TestAutoRegistry:
     def test_bulk_registration_via_update(self):
         """Test bulk registration via .registry.update()."""
 
-        class RobertaTestModel(PretrainedMixin[SimpleConfig]):
+        class RobertaTestModel(BaseTestModel):
             config_class = SimpleConfig
 
-        class AlbertTestModel(PretrainedMixin[SimpleConfig]):
+        class AlbertTestModel(BaseTestModel):
             config_class = SimpleConfig
 
         # Bulk registration
@@ -212,7 +238,7 @@ class TestAutoRegistry:
 
     def test_from_pretrained_auto_detect(self):
         """Test auto-detection from config."""
-        config = SimpleConfig(model_type="bert", value=999)
+        config = BertConfig(value=999)
         model = BertTestModel(config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -228,11 +254,11 @@ class TestAutoRegistry:
     def test_from_pretrained_different_types(self):
         """Test loading different model types."""
         # Save BERT model
-        bert_config = SimpleConfig(model_type="bert", value=111)
+        bert_config = BertConfig(value=111)
         bert_model = BertTestModel(bert_config)
 
         # Save GPT model
-        gpt_config = SimpleConfig(model_type="gpt", value=222)
+        gpt_config = GPTConfig(value=222)
         gpt_model = GPTTestModel(gpt_config)
 
         with tempfile.TemporaryDirectory() as bert_dir:
@@ -251,8 +277,13 @@ class TestAutoRegistry:
 
     def test_unknown_model_type(self):
         """Test error for unknown model type."""
-        config = SimpleConfig(model_type="unknown", value=0)
-        model = SimpleModel(config)
+
+        # Create a model with unknown type config
+        class UnknownModel(PretrainedMixin):
+            config_class = UnknownConfig
+
+        config = UnknownConfig(value=0)
+        model = UnknownModel(config)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save_pretrained(tmpdir)
