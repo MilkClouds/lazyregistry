@@ -208,6 +208,7 @@ class AutoRegistry:
         This method reads the config JSON to extract the type identifier,
         then delegates to the appropriate model class's from_pretrained method.
         """
+        # TODO: support hf hub or remote. e.g. https://github.com/huggingface/transformers/blob/517197f795e3b44229bdf226d4cddf5240cc644a/src/transformers/configuration_utils.py#L670-L700
         config_file = Path(pretrained_path) / cls.config_filename
         # Temporarily allow extra fields to extract the type key without validation errors
         config = cls.config_class.model_validate_json(config_file.read_text(), extra="allow")
