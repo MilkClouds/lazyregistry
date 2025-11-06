@@ -93,7 +93,10 @@ class PretrainedMixin:
         """Load a model from a saved configuration."""
         config_file = Path(pretrained_path) / cls.config_filename
         config = cls.config_class.model_validate_json(config_file.read_text())
-        return cls(config=config, **kwargs)  # type: ignore[arg-type]
+        return cls(config=config, **kwargs)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(config={self.config!r})"
 
 
 class AutoRegistry:
