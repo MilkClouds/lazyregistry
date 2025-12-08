@@ -42,7 +42,7 @@ serializer = registry["json"]
 - **Lazy imports** - Defer expensive imports until first access
 - **Instance registration** - Register both import strings and direct objects
 - **Namespaces** - Organize multiple registries
-- **Type-safe** - Full generic type support
+- **Generic types** - Type hints for IDE autocomplete on registry access
 - **Eager loading** - Optional immediate import for critical components
 - **Pretrained models** - Built-in support for save_pretrained/from_pretrained pattern
 
