@@ -13,7 +13,7 @@ References:
 """
 
 from collections import UserDict
-from typing import Generic, TypeVar, Union
+from typing import Generic, TypeVar
 
 from pydantic import ImportString as PydanticImportString
 from pydantic import TypeAdapter
@@ -57,11 +57,11 @@ class LazyImportDict(UserDict[K, V], Generic[K, V]):
     auto_import_strings: bool = True
     eager_load: bool = False
 
-    def __setitem__(self, key: K, value: Union[V, str]) -> None:
-        if self.auto_import_strings and isinstance(value, str):
-            self.data[key] = ImportString(value)  # type: ignore[assignment]
+    def __setitem__(self, key: K, item: V) -> None:
+        if self.auto_import_strings and isinstance(item, str):
+            self.data[key] = ImportString(item)  # type: ignore[assignment]
         else:
-            self.data[key] = value  # type: ignore[assignment]
+            self.data[key] = item
 
         if self.eager_load:
             _ = self[key]
