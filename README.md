@@ -46,6 +46,8 @@ serializer = registry["json"]
 - **Eager loading** - Optional immediate import for critical components
 - **Pretrained models** - Built-in support for save_pretrained/from_pretrained pattern
 
+> 💡 Want to lazy-load your entire package with full type checking support? See [Combining with lazy-loader](#combining-with-lazy-loader-for-full-lazy-package-imports).
+
 ## Examples
 
 Run examples: `uv run python examples/<example>.py`
