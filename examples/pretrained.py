@@ -38,7 +38,7 @@ class GPT2Config(PretrainedConfig):
 class BaseModel(PretrainedMixin):
     """Base model class for all transformer models."""
 
-    config_class = PretrainedConfig
+    config: PretrainedConfig
 
 
 class AutoModel(AutoRegistry):
@@ -53,14 +53,14 @@ class AutoModel(AutoRegistry):
 class BertModel(BaseModel):
     """BERT model - saves/loads config only."""
 
-    config_class = BertConfig
+    config: BertConfig
 
 
 @AutoModel.register_module("gpt2")
 class GPT2Model(BaseModel):
     """GPT-2 model - saves/loads config only."""
 
-    config_class = GPT2Config
+    config: GPT2Config
 
 
 # ============================================================================
@@ -87,7 +87,7 @@ class BPEConfig(PretrainedConfig):
 class BaseTokenizer(PretrainedMixin):
     """Base tokenizer with vocabulary state."""
 
-    config_class = PretrainedConfig
+    config: PretrainedConfig
 
     def __init__(self, *args, vocab: Optional[Dict[str, int]] = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -138,14 +138,14 @@ class AutoTokenizer(AutoRegistry):
 class WordPieceTokenizer(BaseTokenizer):
     """WordPiece tokenizer."""
 
-    config_class = WordPieceConfig
+    config: WordPieceConfig
 
 
 # Example: Direct registration without decorator
 class BPETokenizer(BaseTokenizer):
     """BPE tokenizer."""
 
-    config_class = BPEConfig
+    config: BPEConfig
 
 
 # Register using dict-style assignment (alternative to decorator)

@@ -203,7 +203,7 @@ class MyConfig(PretrainedConfig):
     model_type: str = "my_model"
 
 class MyModel(PretrainedMixin):
-    config_class = MyConfig
+    config: MyConfig
 
 model.save_pretrained("./path")
 loaded = MyModel.from_pretrained("./path")
@@ -228,7 +228,7 @@ class GPT2Config(PretrainedConfig):
 
 # Base model class
 class BaseModel(PretrainedMixin):
-    config_class = PretrainedConfig
+    config: PretrainedConfig
 
 class AutoModel(AutoRegistry):
     registry = NAMESPACE["models"]
@@ -238,7 +238,7 @@ class AutoModel(AutoRegistry):
 # 1. Decorator registration - models inherit from BaseModel
 @AutoModel.register_module("bert")
 class BertModel(BaseModel):
-    config_class = BertConfig
+    config: BertConfig
 
 # 2. Direct registration via .registry
 AutoModel.registry["gpt2"] = GPT2Model                   # Direct instance

@@ -41,13 +41,13 @@ class UnknownConfig(PretrainedConfig):
 class BaseTestModel(PretrainedMixin):
     """Base model for testing."""
 
-    config_class = PretrainedConfig
+    config: PretrainedConfig
 
 
 class SimpleModel(BaseTestModel):
     """Simple model for pretrained functionality testing."""
 
-    config_class = SimpleConfig
+    config: SimpleConfig
 
 
 class TestPretrainedMixin:
@@ -111,7 +111,7 @@ class CustomConfig(PretrainedConfig):
 class CustomModel(PretrainedMixin):
     """Model with custom state beyond config."""
 
-    config_class = CustomConfig
+    config: CustomConfig
 
     def __init__(self, *args, vocab: Optional[Dict[str, int]] = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -188,14 +188,14 @@ class AutoTestModel(AutoRegistry):
 class BertTestModel(BaseTestModel):
     """BERT test model."""
 
-    config_class = BertConfig
+    config: BertConfig
 
 
 @AutoTestModel.register_module("gpt")
 class GPTTestModel(BaseTestModel):
     """GPT test model."""
 
-    config_class = GPTConfig
+    config: GPTConfig
 
 
 class TestAutoRegistry:
@@ -209,7 +209,7 @@ class TestAutoRegistry:
 
         # Dict-style registration
         class T5TestModel(BaseTestModel):
-            config_class = SimpleConfig
+            config: SimpleConfig
 
         AutoTestModel.registry["t5"] = T5TestModel
         assert "t5" in NAMESPACE["test_models"]
@@ -218,10 +218,10 @@ class TestAutoRegistry:
         """Test bulk registration via .registry.update()."""
 
         class RobertaTestModel(BaseTestModel):
-            config_class = SimpleConfig
+            config: SimpleConfig
 
         class AlbertTestModel(BaseTestModel):
-            config_class = SimpleConfig
+            config: SimpleConfig
 
         # Bulk registration
         AutoTestModel.registry.update(
@@ -280,7 +280,7 @@ class TestAutoRegistry:
 
         # Create a model with unknown type config
         class UnknownModel(PretrainedMixin):
-            config_class = UnknownConfig
+            config: UnknownConfig
 
         config = UnknownConfig(value=0)
         model = UnknownModel(config=config)
@@ -300,7 +300,7 @@ class TestAutoRegistry:
             value: int = 42
 
         class NoTypeKeyModel(PretrainedMixin):
-            config_class = NoTypeKeyConfig
+            config: NoTypeKeyConfig
 
         config = NoTypeKeyConfig(value=99)
         model = NoTypeKeyModel(config=config)

@@ -41,7 +41,18 @@ class PretrainedConfig(BaseModel):
     pass
 
 
-class PretrainedMixin:
+class ConfigClassInferenceMeta(type):
+    """Metaclass that infers config_class from config annotation."""
+
+    @property
+    def config_class(cls) -> Type[PretrainedConfig]:
+        """Infer config_class from the config instance annotation."""
+        if "config" not in cls.__annotations__:
+            raise AttributeError(f"{cls.__name__} must have a 'config' type annotation")
+        return cls.__annotations__["config"]
+
+
+class PretrainedMixin(metaclass=ConfigClassInferenceMeta):
     """
     Mixin class providing save_pretrained/from_pretrained functionality.
 
@@ -61,11 +72,11 @@ class PretrainedMixin:
 
         >>> # Base model class
         >>> class BaseModel(PretrainedMixin):
-        ...     config_class = PretrainedConfig
+        ...     config: PretrainedConfig
 
         >>> # Specific model inherits from base
         >>> class BertModel(BaseModel):
-        ...     config_class = BertConfig
+        ...     config: BertConfig
 
         >>> # Create and save model
         >>> config = BertConfig(hidden_size=1024)
@@ -74,7 +85,7 @@ class PretrainedMixin:
         >>> loaded = BertModel.from_pretrained("./bert_model")
     """
 
-    config_class: ClassVar[Type[PretrainedConfig]]
+    config: PretrainedConfig
     config_filename: ClassVar[str] = "config.json"
 
     def __init__(self, *args, config, **kwargs):
@@ -130,7 +141,7 @@ class AutoRegistry:
 
         >>> # Base model class
         >>> class BaseModel(PretrainedMixin):
-        ...     config_class = PretrainedConfig
+        ...     config: PretrainedConfig
 
         >>> class AutoModel(AutoRegistry):
         ...     registry = NAMESPACE["models"]
@@ -140,7 +151,7 @@ class AutoRegistry:
         >>> # Decorator registration - models inherit from BaseModel
         >>> @AutoModel.register_module("bert")
         ... class BertModel(BaseModel):
-        ...     config_class = BertConfig
+        ...     config: BertConfig
 
         >>> # Direct registration via .registry
         >>> AutoModel.registry["gpt2"] = GPT2Model
@@ -191,11 +202,11 @@ class AutoRegistry:
 
             >>> # Base model class
             >>> class BaseModel(PretrainedMixin):
-            ...     config_class = PretrainedConfig
+            ...     config: PretrainedConfig
 
             >>> @AutoModel.register_module("bert")
             ... class BertModel(BaseModel):
-            ...     config_class = BertConfig
+            ...     config: BertConfig
         """
 
         def decorator(model_class):
