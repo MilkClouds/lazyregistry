@@ -281,6 +281,56 @@ registry.register("c", "heavy_module_3:ClassC")
 component = registry["a"]
 ```
 
+## Tips
+
+### Combining with lazy-loader for Full Lazy Package Imports
+
+For packages with many heavy dependencies, you can combine `lazyregistry` with [lazy-loader](https://github.com/scientific-python/lazy-loader) to achieve both lazy module imports and lazy registry lookups:
+
+```python
+# mypackage/__init__.py
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # Static analysis sees these imports (IDE autocomplete, mypy, pyright)
+    from .auto import AutoModel as AutoModel
+    from .bert import BertModel as BertModel
+    from .gpt2 import GPT2Model as GPT2Model
+else:
+    # Runtime uses lazy-loader (nothing imported until accessed)
+    import lazy_loader as lazy
+
+    __getattr__, __dir__, __all__ = lazy.attach(
+        __name__,
+        submod_attrs={
+            "auto": ["AutoModel"],
+            "bert": ["BertModel"],
+            "gpt2": ["GPT2Model"],
+        },
+    )
+```
+
+```python
+# mypackage/auto.py
+from lazyregistry import Registry
+from lazyregistry.pretrained import AutoRegistry
+
+class AutoModel(AutoRegistry):
+    registry = Registry(name="models")
+
+# String references - actual imports deferred until registry access
+AutoModel.registry.update({
+    "bert": "mypackage.bert:BertModel",
+    "gpt2": "mypackage.gpt2:GPT2Model",
+})
+```
+
+**Benefits:**
+- **Double lazy loading**: `lazy-loader` defers module imports + `lazyregistry` defers registry lookups
+- **Full type checking**: `TYPE_CHECKING` block provides IDE autocomplete and static analysis
+- **Zero import cost**: Heavy dependencies (torch, sklearn, etc.) only load when actually used
+- **Clean public API**: Users import naturally with `from mypackage import AutoModel`
+
 ## Testing
 
 Run tests with coverage:
