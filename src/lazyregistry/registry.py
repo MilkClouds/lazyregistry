@@ -16,7 +16,9 @@ from collections import UserDict
 from typing import Generic, TypeVar
 
 from pydantic import ImportString as PydanticImportString
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
+
+from .exceptions import ImportFailedError
 
 __all__ = ["ImportString", "LazyImportDict", "Registry", "Namespace", "NAMESPACE"]
 
@@ -37,8 +39,17 @@ class ImportString(str):
     """
 
     def load(self):
-        """Import and return the object referenced by this import string."""
-        return _import_adapter.validate_python(self)
+        """Import and return the object referenced by this import string.
+
+        Raises:
+            ImportFailedError: If the import string cannot be resolved.
+                The original ``pydantic.ValidationError`` is chained as
+                ``__cause__`` for full diagnostic details.
+        """
+        try:
+            return _import_adapter.validate_python(self)
+        except ValidationError as e:
+            raise ImportFailedError(f"Failed to import '{self}'") from e
 
 
 class LazyImportDict(UserDict[K, V], Generic[K, V]):

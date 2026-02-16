@@ -3,6 +3,7 @@
 import pytest
 
 from lazyregistry import NAMESPACE
+from lazyregistry.exceptions import ImportFailedError, LazyRegistryError
 from lazyregistry.registry import ImportString, LazyImportDict, Namespace, Registry
 
 
@@ -21,10 +22,48 @@ class TestImportString:
         assert func is json.dumps
 
     def test_load_method_invalid_import(self):
-        """Test load() method with invalid import string."""
+        """Test load() raises ImportFailedError for invalid import string."""
         import_str = ImportString("nonexistent_module:function")
 
-        with pytest.raises(Exception):  # Pydantic will raise an error
+        with pytest.raises(ImportFailedError, match="Failed to import 'nonexistent_module:function'"):
+            import_str.load()
+
+    def test_load_method_invalid_import_is_import_error(self):
+        """ImportFailedError should also be catchable as ImportError."""
+        import_str = ImportString("nonexistent_module:function")
+
+        with pytest.raises(ImportError):
+            import_str.load()
+
+    def test_load_method_invalid_import_is_lazyregistry_error(self):
+        """ImportFailedError should also be catchable as LazyRegistryError."""
+        import_str = ImportString("nonexistent_module:function")
+
+        with pytest.raises(LazyRegistryError):
+            import_str.load()
+
+    def test_load_method_invalid_import_chains_cause(self):
+        """ImportFailedError should chain the original pydantic ValidationError."""
+        import_str = ImportString("nonexistent_module:function")
+
+        with pytest.raises(ImportFailedError) as exc_info:
+            import_str.load()
+
+        assert exc_info.value.__cause__ is not None
+        assert "ValidationError" in type(exc_info.value.__cause__).__name__
+
+    def test_load_method_invalid_attribute(self):
+        """Test load() raises ImportFailedError for invalid attribute."""
+        import_str = ImportString("json:nonexistent_func")
+
+        with pytest.raises(ImportFailedError, match="Failed to import 'json:nonexistent_func'"):
+            import_str.load()
+
+    def test_load_method_empty_string(self):
+        """Test load() raises ImportFailedError for empty string."""
+        import_str = ImportString("")
+
+        with pytest.raises(ImportFailedError, match="Failed to import"):
             import_str.load()
 
 

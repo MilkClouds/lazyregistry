@@ -11,6 +11,15 @@ except ImportError:  # pragma: no cover
         __version__ = "0.0.0.dev0"
 
 
+from .exceptions import ImportFailedError, LazyRegistryError
 from .registry import NAMESPACE, ImportString, LazyImportDict, Namespace, Registry
 
-__all__ = ["ImportString", "LazyImportDict", "Registry", "Namespace", "NAMESPACE"]
+__all__ = [
+    "ImportFailedError",
+    "ImportString",
+    "LazyImportDict",
+    "LazyRegistryError",
+    "NAMESPACE",
+    "Namespace",
+    "Registry",
+]
