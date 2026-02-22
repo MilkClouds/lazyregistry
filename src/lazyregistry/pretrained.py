@@ -5,6 +5,7 @@ Provides base classes and utilities for implementing HuggingFace-style
 save_pretrained/from_pretrained patterns with automatic model registration.
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Any, ClassVar, Type, Union
@@ -213,9 +214,8 @@ class AutoRegistry:
         """
         # TODO: support hf hub or remote. e.g. https://github.com/huggingface/transformers/blob/517197f795e3b44229bdf226d4cddf5240cc644a/src/transformers/configuration_utils.py#L670-L700
         config_file = Path(pretrained_path) / cls.config_filename
-        # Temporarily allow extra fields to extract the type key without validation errors
-        config = cls.config_class.model_validate_json(config_file.read_text(), extra="allow")
-        model_type = getattr(config, cls.type_key, None)
+        raw = json.loads(config_file.read_text())
+        model_type = raw.get(cls.type_key)
         if model_type is None:
             raise ValueError(
                 f"Config does not contain required type key '{cls.type_key}'. "

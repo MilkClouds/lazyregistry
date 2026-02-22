@@ -13,7 +13,7 @@ References:
 """
 
 from collections import UserDict
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from pydantic import ImportString as PydanticImportString
 from pydantic import TypeAdapter, ValidationError
@@ -52,7 +52,13 @@ class ImportString(str):
             raise ImportFailedError(f"Failed to import '{self}'") from e
 
 
-class LazyImportDict(UserDict[K, V], Generic[K, V]):
+if TYPE_CHECKING:
+    _LazyImportDictBase = UserDict[K, V]
+else:
+    _LazyImportDictBase = UserDict
+
+
+class LazyImportDict(_LazyImportDictBase, Generic[K, V]):
     """Dictionary that lazily imports values as needed.
 
     Attributes:
@@ -70,7 +76,7 @@ class LazyImportDict(UserDict[K, V], Generic[K, V]):
 
     def __setitem__(self, key: K, item: V) -> None:
         if self.auto_import_strings and isinstance(item, str):
-            self.data[key] = ImportString(item)  # type: ignore[assignment]
+            self.data[key] = ImportString(item)
         else:
             self.data[key] = item
 
@@ -98,7 +104,13 @@ class Registry(LazyImportDict[K, V], Generic[K, V]):
         super().__init__(*args, **kwargs)
 
 
-class Namespace(UserDict[str, Registry]):
+if TYPE_CHECKING:
+    _NamespaceBase = UserDict[str, Registry]
+else:
+    _NamespaceBase = UserDict
+
+
+class Namespace(_NamespaceBase):
     """Container for multiple named registries.
 
     Each registry is completely isolated from others.
