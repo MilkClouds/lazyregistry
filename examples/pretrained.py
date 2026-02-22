@@ -8,8 +8,10 @@ Demonstrates:
 4. Both decorator and direct .registry registration methods
 """
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from lazyregistry import NAMESPACE
 from lazyregistry.pretrained import AutoRegistry, PathLike, PretrainedConfig, PretrainedMixin
@@ -89,7 +91,7 @@ class BaseTokenizer(PretrainedMixin):
 
     config_class = PretrainedConfig
 
-    def __init__(self, *args, vocab: Optional[Dict[str, int]] = None, **kwargs):
+    def __init__(self, *args, vocab: dict[str, int] | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.vocab = vocab or {"<unk>": 0, "<pad>": 1}
 

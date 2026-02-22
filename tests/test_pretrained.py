@@ -1,8 +1,10 @@
 """Tests for pretrained model functionality."""
 
+from __future__ import annotations
+
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pytest
 
@@ -113,7 +115,7 @@ class CustomModel(PretrainedMixin):
 
     config_class = CustomConfig
 
-    def __init__(self, *args, vocab: Optional[Dict[str, int]] = None, **kwargs):
+    def __init__(self, *args, vocab: dict[str, int] | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.vocab = vocab or {}
 

@@ -12,8 +12,11 @@ References:
   https://github.com/open-mmlab/mmdetection/blob/main/mmdet/registry.py
 """
 
+from __future__ import annotations
+
+import sys
 from collections import UserDict
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from pydantic import ImportString as PydanticImportString
 from pydantic import TypeAdapter, ValidationError
@@ -52,7 +55,7 @@ class ImportString(str):
             raise ImportFailedError(f"Failed to import '{self}'") from e
 
 
-class LazyImportDict(UserDict[K, V], Generic[K, V]):
+class LazyImportDict(UserDict, Generic[K, V]):
     """Dictionary that lazily imports values as needed.
 
     Attributes:
@@ -65,6 +68,7 @@ class LazyImportDict(UserDict[K, V], Generic[K, V]):
         >>> registry.update({"pickle": "pickle:dumps"})
     """
 
+    data: dict[K, V]  # on python>=3.9, it's enough to remove this line and use `UserDict[K, V]` as base class
     auto_import_strings: bool = True
     eager_load: bool = False
 
@@ -98,7 +102,17 @@ class Registry(LazyImportDict[K, V], Generic[K, V]):
         super().__init__(*args, **kwargs)
 
 
-class Namespace(UserDict[str, Registry]):
+if TYPE_CHECKING:
+    _NamespaceBase = UserDict[str, Registry]
+else:  # pragma: no cover
+    if sys.version_info >= (3, 9):
+        _NamespaceBase = UserDict[str, Registry]
+    else:
+        # UserDict in Python 3.8 does not support subscription
+        _NamespaceBase = UserDict
+
+
+class Namespace(_NamespaceBase):
     """Container for multiple named registries.
 
     Each registry is completely isolated from others.

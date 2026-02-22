@@ -7,6 +7,8 @@ Demonstrates:
 3. Extensible architecture for third-party plugins
 """
 
+from __future__ import annotations
+
 from lazyregistry import Registry
 
 # Global plugin registry
