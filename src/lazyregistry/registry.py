@@ -104,7 +104,7 @@ class Registry(LazyImportDict[K, V], Generic[K, V]):
 
 if TYPE_CHECKING:
     _NamespaceBase = UserDict[str, Registry]
-else:
+else:  # pragma: no cover
     if sys.version_info >= (3, 9):
         _NamespaceBase = UserDict[str, Registry]
     else:
