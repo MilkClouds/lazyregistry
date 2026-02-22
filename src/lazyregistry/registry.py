@@ -12,6 +12,7 @@ References:
   https://github.com/open-mmlab/mmdetection/blob/main/mmdet/registry.py
 """
 
+import sys
 from collections import UserDict
 from typing import TYPE_CHECKING, Generic, TypeVar
 
@@ -52,13 +53,7 @@ class ImportString(str):
             raise ImportFailedError(f"Failed to import '{self}'") from e
 
 
-if TYPE_CHECKING:
-    _LazyImportDictBase = UserDict[K, V]
-else:
-    _LazyImportDictBase = UserDict
-
-
-class LazyImportDict(_LazyImportDictBase, Generic[K, V]):
+class LazyImportDict(UserDict, Generic[K, V]):
     """Dictionary that lazily imports values as needed.
 
     Attributes:
@@ -71,12 +66,13 @@ class LazyImportDict(_LazyImportDictBase, Generic[K, V]):
         >>> registry.update({"pickle": "pickle:dumps"})
     """
 
+    data: dict[K, V]  # on python>=3.9, it's enough to remove this line and use `UserDict[K, V]` as base class
     auto_import_strings: bool = True
     eager_load: bool = False
 
     def __setitem__(self, key: K, item: V) -> None:
         if self.auto_import_strings and isinstance(item, str):
-            self.data[key] = ImportString(item)
+            self.data[key] = ImportString(item)  # type: ignore[assignment]
         else:
             self.data[key] = item
 
@@ -107,7 +103,11 @@ class Registry(LazyImportDict[K, V], Generic[K, V]):
 if TYPE_CHECKING:
     _NamespaceBase = UserDict[str, Registry]
 else:
-    _NamespaceBase = UserDict
+    if sys.version_info >= (3, 9):
+        _NamespaceBase = UserDict[str, Registry]
+    else:
+        # UserDict in Python 3.8 does not support subscription
+        _NamespaceBase = UserDict
 
 
 class Namespace(_NamespaceBase):
