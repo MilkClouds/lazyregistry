@@ -12,6 +12,8 @@ References:
   https://github.com/open-mmlab/mmdetection/blob/main/mmdet/registry.py
 """
 
+from __future__ import annotations
+
 import sys
 from collections import UserDict
 from typing import TYPE_CHECKING, Generic, TypeVar
